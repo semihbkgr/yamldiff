@@ -26,5 +26,11 @@ func Execute() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	diffCtx, err := diff.NewDiffContext(args[0], args[1])
+	if err != nil {
+		return err
+	}
+	diffs := diffCtx.Diffs()
+	fmt.Printf("%s\n", diffs)
 	return nil
 }
