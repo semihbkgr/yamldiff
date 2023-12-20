@@ -1,0 +1,10 @@
+people:
+  name: John
+  surname: Doe
+
+city:
+  name: New York
+
+item:
+  id: 124
+  price: 10.9

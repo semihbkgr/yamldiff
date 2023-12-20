@@ -1,0 +1,10 @@
+people:
+  name: Bob
+  surname: Rose
+
+city:
+  name: San Francisco
+
+item:
+  id: 123
+  price: 10.3
