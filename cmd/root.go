@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -27,14 +28,26 @@ func Execute() {
 	}
 }
 
+var exitOnDifference = false
+
 func run(cmd *cobra.Command, args []string) error {
 	diffCtx, err := diff.NewDiffContext(args[0], args[1])
 	if err != nil {
 		return err
 	}
 	diffs := diffCtx.Diffs()
-	fmt.Printf("%s\n", diffs)
+
+	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs)
+
+	if exitOnDifference && diffs.HasDifference() {
+		return errors.New("yaml files have difference(s)")
+	}
+
 	return nil
+}
+
+func init() {
+	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
 }
 
 // buildVersion is set by ldflags

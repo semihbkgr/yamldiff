@@ -177,6 +177,10 @@ func (d FileDiffs) String() string {
 	return strings.Join(docDiffsStrings, "\n---\n")
 }
 
+func (d FileDiffs) HasDifference() bool {
+	return len(d) > 0
+}
+
 func NewFileDiffs(ln, rn *ast.File) FileDiffs {
 	var docDiffs = make(FileDiffs, max(len(ln.Docs), len(rn.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
