@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/semihbkgr/yamldiff/diff"
 	"github.com/spf13/cobra"
@@ -14,6 +15,7 @@ var rootCmd = &cobra.Command{
 	Args:         cobra.ExactArgs(2),
 	SilenceUsage: true,
 	RunE:         run,
+	Version:      version(),
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -33,4 +35,20 @@ func run(cmd *cobra.Command, args []string) error {
 	diffs := diffCtx.Diffs()
 	fmt.Printf("%s\n", diffs)
 	return nil
+}
+
+// buildVersion is set by ldflags
+var buildVersion string
+
+func version() string {
+	if buildVersion != "" {
+		return buildVersion
+	}
+
+	i, ok := debug.ReadBuildInfo()
+	if ok {
+		return i.Main.Version
+	}
+
+	return "undefined"
 }
