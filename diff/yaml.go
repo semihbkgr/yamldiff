@@ -8,6 +8,9 @@ import (
 	"github.com/goccy/go-yaml/parser"
 )
 
+//todo: sort output diffs
+//todo: fix diff node type
+
 type DiffContext struct {
 	left  *ast.File
 	right *ast.File
@@ -59,12 +62,10 @@ func NewDocDiffs(ln, rn *ast.DocumentNode, conf *DiffConfig) DocDiffs {
 }
 
 func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
-	// TODO: return diffs for all children nodes
 	if leftNode == nil {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
 
-	// TODO: return diffs for all children nodes
 	if rightNode == nil {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
@@ -100,7 +101,6 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 		leftMappingValueNode := leftNode.(*ast.MappingValueNode)
 		rightMappingValueNode := rightNode.(*ast.MappingValueNode)
 		if leftMappingValueNode.Key.String() != rightMappingValueNode.Key.String() {
-			// TODO: return diffs for all children nodes
 			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 		}
 		return compareNodes(leftMappingValueNode.Value, rightMappingValueNode.Value, conf)
@@ -115,7 +115,6 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig)
 	for k, leftValue := range leftKeyValueMap {
 		rightValue, ok := rightKeyValueMap[k]
 		if !ok {
-			// TODO: return diffs for all children nodes
 			keyDiffsMap[k] = []*Diff{{NodeLeft: leftValue, NodeRight: nil}}
 			continue
 		}
@@ -126,7 +125,6 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig)
 		if ok {
 			continue
 		}
-		// TODO: return diffs for all children nodes
 		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: rightValue}}
 	}
 
@@ -209,16 +207,29 @@ func ignoreIndexes(diffs []*Diff, conf *DiffConfig) []*Diff {
 func (d DocDiffs) String() string {
 	b := strings.Builder{}
 	for _, diff := range d {
-		if diff.NodeLeft == nil {
-			b.WriteString(fmt.Sprintf("Add: %s", diff.NodeRight.GetPath()))
-		} else if diff.NodeRight == nil {
-			b.WriteString(fmt.Sprintf("Delete: %s", diff.NodeLeft.GetPath()))
-		} else {
-			b.WriteString(fmt.Sprintf("Update: %s %s=>%s", diff.NodeLeft.GetPath(), diff.NodeLeft.String(), diff.NodeRight.String()))
+		if diff.NodeLeft == nil { // Added
+			path := nodePathString(diff.NodeRight)
+			nodeType := diff.NodeRight.Type()
+			value := diff.NodeRight.String()
+			b.WriteString(fmt.Sprintf("+ %s: <%s> %s", path, nodeType, value))
+		} else if diff.NodeRight == nil { //Deleted
+			path := nodePathString(diff.NodeLeft)
+			nodeType := diff.NodeLeft.Type()
+			value := diff.NodeLeft.String()
+			b.WriteString(fmt.Sprintf("- %s: <%s> %s", path, nodeType, value))
+		} else { //Modified
+			path := nodePathString(diff.NodeLeft)
+			leftValue := diff.NodeLeft.String()
+			rightValue := diff.NodeRight.String()
+			b.WriteString(fmt.Sprintf("~ %s: <%s> %s -> <%s> %s", path, diff.NodeLeft.Type(), leftValue, diff.NodeRight.Type(), rightValue))
 		}
 		b.WriteRune('\n')
 	}
 	return b.String()
+}
+
+func nodePathString(n ast.Node) string {
+	return n.GetPath()[2:]
 }
 
 type FileDiffs []DocDiffs
