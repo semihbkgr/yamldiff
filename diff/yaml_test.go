@@ -7,18 +7,18 @@ import (
 )
 
 const (
-	dataFile    = "testdata/data.yaml"
-	dataNewFile = "testdata/data-new.yaml"
+	dataFileLeft  = "testdata/data-left.yaml"
+	dataFileRight = "testdata/data-right.yaml"
 )
 
 func TestNewDiffContext(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFile, dataNewFile)
+	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight)
 	assert.NoError(t, err)
 	assert.NotNil(t, diffCtx)
 }
 
 func TestDiffContextDiffs(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFile, dataNewFile)
+	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight)
 	assert.NoError(t, err)
 
 	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
@@ -29,7 +29,7 @@ func TestDiffContextDiffs(t *testing.T) {
 }
 
 func TestFileDiffsHasDifference(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFile, dataNewFile)
+	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight)
 	assert.NoError(t, err)
 
 	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)

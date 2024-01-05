@@ -28,6 +28,21 @@ func NewDiffContext(filenameLeft, filenameRight string) (*DiffContext, error) {
 	}, nil
 }
 
+func NewDiffContextBytes(left, right []byte) (*DiffContext, error) {
+	yamlLeft, err := parser.ParseBytes(left, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	yamlRight, err := parser.ParseBytes(right, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	return &DiffContext{
+		left:  yamlLeft,
+		right: yamlRight,
+	}, nil
+}
+
 func (c *DiffContext) Diffs(conf *DiffConfig) FileDiffs {
 	return NewFileDiffs(c.left, c.right, conf)
 }
