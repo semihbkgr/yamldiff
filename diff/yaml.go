@@ -146,7 +146,49 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffConfi
 		}
 		diffs = append(diffs, compareNodes(leftValue, rightValue, conf)...)
 	}
+
+	if conf.IgnoreIndex {
+		diffs = ignoreIndexes(diffs, conf)
+	}
+
 	return diffs
+}
+
+func ignoreIndexes(diffs []*Diff, conf *DiffConfig) []*Diff {
+	leftNodes := make([]ast.Node, len(diffs))
+	rightNodes := make([]ast.Node, len(diffs))
+	for i, diff := range diffs {
+		leftNodes[i] = diff.NodeLeft
+		rightNodes[i] = diff.NodeRight
+	}
+
+	for il, leftNode := range leftNodes {
+		if leftNode == nil {
+			continue
+		}
+		for ir, rightNode := range rightNodes {
+			if rightNode == nil {
+				continue
+			}
+			if len(compareNodes(leftNode, rightNode, conf)) == 0 {
+				leftNodes[il] = nil
+				rightNodes[ir] = nil
+				break
+			}
+		}
+	}
+
+	resultDiffs := make([]*Diff, 0)
+	for i := range diffs {
+		leftNode := leftNodes[i]
+		rightNode := rightNodes[i]
+		if leftNode == nil && rightNode == nil {
+			continue
+		}
+		resultDiffs = append(resultDiffs, &Diff{leftNode, rightNode})
+	}
+
+	return resultDiffs
 }
 
 func (d DocDiffs) String() string {
