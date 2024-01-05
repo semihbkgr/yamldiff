@@ -21,7 +21,7 @@ func TestDiffContextDiffs(t *testing.T) {
 	diffCtx, err := NewDiffContext(dataFile, dataNewFile)
 	assert.NoError(t, err)
 
-	fileDiffs := diffCtx.Diffs()
+	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
 	assert.Len(t, fileDiffs, 1)
 
 	docDiffs := fileDiffs[0]
@@ -32,6 +32,6 @@ func TestFileDiffsHasDifference(t *testing.T) {
 	diffCtx, err := NewDiffContext(dataFile, dataNewFile)
 	assert.NoError(t, err)
 
-	fileDiffs := diffCtx.Diffs()
+	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
 	assert.True(t, fileDiffs.HasDifference())
 }

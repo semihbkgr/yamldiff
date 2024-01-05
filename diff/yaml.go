@@ -28,11 +28,9 @@ func NewDiffContext(filenameLeft, filenameRight string) (*DiffContext, error) {
 	}, nil
 }
 
-func (c *DiffContext) Diffs() FileDiffs {
-	return NewFileDiffs(c.left, c.right)
+func (c *DiffContext) Diffs(conf *DiffConfig) FileDiffs {
+	return NewFileDiffs(c.left, c.right, conf)
 }
-
-type ChangeType = int
 
 type Diff struct {
 	NodeLeft  ast.Node
@@ -41,11 +39,11 @@ type Diff struct {
 
 type DocDiffs []*Diff
 
-func NewDocDiffs(ln, rn *ast.DocumentNode) DocDiffs {
-	return compareNodes(ln.Body, rn.Body)
+func NewDocDiffs(ln, rn *ast.DocumentNode, conf *DiffConfig) DocDiffs {
+	return compareNodes(ln.Body, rn.Body, conf)
 }
 
-func compareNodes(leftNode, rightNode ast.Node) []*Diff {
+func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 	// TODO: return diffs for all children nodes
 	if leftNode == nil {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
@@ -62,9 +60,9 @@ func compareNodes(leftNode, rightNode ast.Node) []*Diff {
 
 	switch leftNode.Type() {
 	case ast.MappingType:
-		return compareMappingNodes(leftNode.(*ast.MappingNode), rightNode.(*ast.MappingNode))
+		return compareMappingNodes(leftNode.(*ast.MappingNode), rightNode.(*ast.MappingNode), conf)
 	case ast.SequenceType:
-		return compareSequenceNodes(leftNode.(*ast.SequenceNode), rightNode.(*ast.SequenceNode))
+		return compareSequenceNodes(leftNode.(*ast.SequenceNode), rightNode.(*ast.SequenceNode), conf)
 	case ast.StringType:
 		leftStringNode := leftNode.(*ast.StringNode)
 		rightStringNode := rightNode.(*ast.StringNode)
@@ -83,19 +81,19 @@ func compareNodes(leftNode, rightNode ast.Node) []*Diff {
 		if leftFloatNode.Value != rightFloatNode.Value {
 			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 		}
-	case ast.MappingValueType: // in case the MappingNode's value size is on
+	case ast.MappingValueType: // when MappingNode's value size is one
 		leftMappingValueNode := leftNode.(*ast.MappingValueNode)
 		rightMappingValueNode := rightNode.(*ast.MappingValueNode)
 		if leftMappingValueNode.Key.String() != rightMappingValueNode.Key.String() {
 			// TODO: return diffs for all children nodes
 			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 		}
-		return compareNodes(leftMappingValueNode.Value, rightMappingValueNode.Value)
+		return compareNodes(leftMappingValueNode.Value, rightMappingValueNode.Value, conf)
 	}
 	return nil
 }
 
-func compareMappingNodes(leftNode, rightNode *ast.MappingNode) []*Diff {
+func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig) []*Diff {
 	leftKeyValueMap := mappingValueNodesIntoMap(leftNode)
 	rightKeyValueMap := mappingValueNodesIntoMap(rightNode)
 	keyDiffsMap := make(map[string][]*Diff)
@@ -106,7 +104,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode) []*Diff {
 			keyDiffsMap[k] = []*Diff{{NodeLeft: leftValue, NodeRight: nil}}
 			continue
 		}
-		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value)
+		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, conf)
 	}
 	for k, rightValue := range rightKeyValueMap {
 		_, ok := keyDiffsMap[k]
@@ -135,8 +133,7 @@ func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNo
 	return keyValueMap
 }
 
-func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode) []*Diff {
-	// TODO: compare regardless index
+func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffConfig) []*Diff {
 	diffs := make([]*Diff, 0)
 	l := max(len(leftNode.Values), len(rightNode.Values))
 	for i := 0; i < l; i++ {
@@ -147,7 +144,7 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode) []*Diff {
 		if len(rightNode.Values) > i {
 			rightValue = rightNode.Values[i]
 		}
-		diffs = append(diffs, compareNodes(leftValue, rightValue)...)
+		diffs = append(diffs, compareNodes(leftValue, rightValue, conf)...)
 	}
 	return diffs
 }
@@ -181,7 +178,7 @@ func (d FileDiffs) HasDifference() bool {
 	return len(d) > 0
 }
 
-func NewFileDiffs(ln, rn *ast.File) FileDiffs {
+func NewFileDiffs(ln, rn *ast.File, conf *DiffConfig) FileDiffs {
 	var docDiffs = make(FileDiffs, max(len(ln.Docs), len(rn.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
 		var l, r *ast.DocumentNode
@@ -191,7 +188,15 @@ func NewFileDiffs(ln, rn *ast.File) FileDiffs {
 		if len(rn.Docs) > i {
 			r = rn.Docs[i]
 		}
-		docDiffs[i] = NewDocDiffs(l, r)
+		docDiffs[i] = NewDocDiffs(l, r, conf)
 	}
 	return docDiffs
+}
+
+type DiffConfig struct {
+	IgnoreIndex bool
+}
+
+var DefaultDiffConfig = &DiffConfig{
+	IgnoreIndex: false,
 }
