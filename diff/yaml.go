@@ -9,7 +9,6 @@ import (
 )
 
 //todo: sort output diffs
-//todo: fix diff node type
 
 type DiffContext struct {
 	left  *ast.File
@@ -101,7 +100,10 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 		leftMappingValueNode := leftNode.(*ast.MappingValueNode)
 		rightMappingValueNode := rightNode.(*ast.MappingValueNode)
 		if leftMappingValueNode.Key.String() != rightMappingValueNode.Key.String() {
-			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+			return []*Diff{
+				{NodeLeft: leftMappingValueNode.Value, NodeRight: nil},
+				{NodeLeft: nil, NodeRight: rightMappingValueNode.Value},
+			}
 		}
 		return compareNodes(leftMappingValueNode.Value, rightMappingValueNode.Value, conf)
 	}
@@ -115,7 +117,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig)
 	for k, leftValue := range leftKeyValueMap {
 		rightValue, ok := rightKeyValueMap[k]
 		if !ok {
-			keyDiffsMap[k] = []*Diff{{NodeLeft: leftValue, NodeRight: nil}}
+			keyDiffsMap[k] = []*Diff{{NodeLeft: leftValue.Value, NodeRight: nil}}
 			continue
 		}
 		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, conf)
@@ -125,7 +127,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig)
 		if ok {
 			continue
 		}
-		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: rightValue}}
+		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: rightValue.Value}}
 	}
 
 	allDiffs := make([]*Diff, 0)
