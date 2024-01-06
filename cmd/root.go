@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:          "yamldiff",
 	Short:        "yaml diff",
 	Args:         cobra.ExactArgs(2),
-	SilenceUsage: true,
+	SilenceUsage: false,
 	RunE:         run,
 	Version:      version(),
 }
@@ -29,8 +29,8 @@ func Execute() {
 }
 
 var exitOnDifference = false
-var plainOutput = false
-var diffConfig = diff.DefaultDiffConfig
+var diffOptions = diff.DefaultDiffOptions
+var outputOptions = diff.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {
 	diffCtx, err := diff.NewDiffContext(args[0], args[1])
@@ -38,8 +38,8 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	diffs := diffCtx.Diffs(diffConfig)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs.OutputString(!plainOutput))
+	diffs := diffCtx.Diffs(diffOptions)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs.OutputString(outputOptions))
 
 	if exitOnDifference && diffs.HasDifference() {
 		return errors.New("yaml files have difference(s)")
@@ -50,8 +50,9 @@ func run(cmd *cobra.Command, args []string) error {
 
 func init() {
 	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
-	rootCmd.Flags().BoolVarP(&diffConfig.IgnoreIndex, "ignore", "i", diffConfig.IgnoreIndex, "ignore indexes in array")
-	rootCmd.Flags().BoolVarP(&plainOutput, "plain", "p", plainOutput, "uncolored output")
+	rootCmd.Flags().BoolVarP(&diffOptions.IgnoreIndex, "ignore", "i", diffOptions.IgnoreIndex, "ignore indexes in array")
+	rootCmd.Flags().BoolVarP(&outputOptions.Plain, "plain", "p", outputOptions.Plain, "uncolored output")
+	rootCmd.Flags().BoolVarP(&outputOptions.Silent, "silent", "s", outputOptions.Silent, "print output in silent mode ignoring values")
 }
 
 // buildVersion is set by ldflags

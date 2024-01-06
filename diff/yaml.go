@@ -45,7 +45,7 @@ func NewDiffContextBytes(left, right []byte) (*DiffContext, error) {
 	}, nil
 }
 
-func (c *DiffContext) Diffs(conf *DiffConfig) FileDiffs {
+func (c *DiffContext) Diffs(conf *DiffOptions) FileDiffs {
 	return NewFileDiffs(c.left, c.right, conf)
 }
 
@@ -56,7 +56,7 @@ type Diff struct {
 
 type DocDiffs []*Diff
 
-func NewDocDiffs(ln, rn *ast.DocumentNode, conf *DiffConfig) DocDiffs {
+func NewDocDiffs(ln, rn *ast.DocumentNode, conf *DiffOptions) DocDiffs {
 	return compareNodes(ln.Body, rn.Body, conf)
 }
 
@@ -89,7 +89,7 @@ func (a DocDiffs) Less(i, j int) bool {
 	return nodeA.GetToken().Position.Line < nodeB.GetToken().Position.Line
 }
 
-func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
+func compareNodes(leftNode, rightNode ast.Node, conf *DiffOptions) []*Diff {
 	if leftNode == nil {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
@@ -146,7 +146,7 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 	return nil
 }
 
-func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffConfig) []*Diff {
+func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions) []*Diff {
 	leftKeyValueMap := mappingValueNodesIntoMap(leftNode)
 	rightKeyValueMap := mappingValueNodesIntoMap(rightNode)
 	keyDiffsMap := make(map[string][]*Diff)
@@ -184,7 +184,7 @@ func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNo
 	return keyValueMap
 }
 
-func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffConfig) []*Diff {
+func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffOptions) []*Diff {
 	diffs := make([]*Diff, 0)
 	l := max(len(leftNode.Values), len(rightNode.Values))
 	for i := 0; i < l; i++ {
@@ -205,7 +205,7 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffConfi
 	return diffs
 }
 
-func ignoreIndexes(diffs []*Diff, conf *DiffConfig) []*Diff {
+func ignoreIndexes(diffs []*Diff, conf *DiffOptions) []*Diff {
 	leftNodes := make([]ast.Node, len(diffs))
 	rightNodes := make([]ast.Node, len(diffs))
 	for i, diff := range diffs {
@@ -242,41 +242,59 @@ func ignoreIndexes(diffs []*Diff, conf *DiffConfig) []*Diff {
 	return resultDiffs
 }
 
-func (d DocDiffs) OutputString(colored bool) string {
+func (d DocDiffs) OutputString(opts *OutputOptions) string {
 	b := strings.Builder{}
 	for _, diff := range d {
 		if diff.NodeLeft == nil { // Added
 			sign := "+"
 			path := nodePathString(diff.NodeRight)
 			value := nodeValueString(diff.NodeRight)
-			if colored {
+
+			if !opts.Plain {
 				sign = color.HiGreenString(sign)
 				path = color.HiGreenString(path)
 				value = color.HiWhiteString(value)
 			}
-			b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+
+			if opts.Silent {
+				b.WriteString(fmt.Sprintf("%s %s", sign, path))
+			} else {
+				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+			}
 		} else if diff.NodeRight == nil { //Deleted
 			sign := "-"
 			path := nodePathString(diff.NodeLeft)
 			value := nodeValueString(diff.NodeLeft)
-			if colored {
+
+			if !opts.Plain {
 				sign = color.HiRedString(sign)
 				path = color.HiRedString(path)
 				value = color.HiWhiteString(value)
 			}
-			b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+
+			if opts.Silent {
+				b.WriteString(fmt.Sprintf("%s %s", sign, path))
+			} else {
+				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+			}
 		} else { //Modified
 			sign := "~"
 			path := nodePathString(diff.NodeLeft)
 			leftValue := nodeValueString(diff.NodeLeft)
 			rightValue := nodeValueString(diff.NodeRight)
-			if colored {
+
+			if !opts.Plain {
 				sign = color.HiYellowString(sign)
 				path = color.HiYellowString(path)
 				leftValue = color.HiWhiteString(leftValue)
 				rightValue = color.HiWhiteString(rightValue)
 			}
-			b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
+
+			if opts.Silent {
+				b.WriteString(fmt.Sprintf("%s %s", sign, path))
+			} else {
+				b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
+			}
 		}
 		b.WriteRune('\n')
 	}
@@ -312,10 +330,10 @@ func nodeValueString(n ast.Node) string {
 
 type FileDiffs []DocDiffs
 
-func (d FileDiffs) OutputString(colored bool) string {
+func (d FileDiffs) OutputString(opts *OutputOptions) string {
 	docDiffsStrings := make([]string, 0, len(d))
 	for _, docDiffs := range d {
-		docDiffsStrings = append(docDiffsStrings, docDiffs.OutputString(colored))
+		docDiffsStrings = append(docDiffsStrings, docDiffs.OutputString(opts))
 	}
 	return strings.Join(docDiffsStrings, "\n---\n")
 }
@@ -324,7 +342,7 @@ func (d FileDiffs) HasDifference() bool {
 	return len(d) > 0
 }
 
-func NewFileDiffs(ln, rn *ast.File, conf *DiffConfig) FileDiffs {
+func NewFileDiffs(ln, rn *ast.File, conf *DiffOptions) FileDiffs {
 	var docDiffs = make(FileDiffs, max(len(ln.Docs), len(rn.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
 		var l, r *ast.DocumentNode
@@ -341,10 +359,20 @@ func NewFileDiffs(ln, rn *ast.File, conf *DiffConfig) FileDiffs {
 	return docDiffs
 }
 
-type DiffConfig struct {
+type DiffOptions struct {
 	IgnoreIndex bool
 }
 
-var DefaultDiffConfig = &DiffConfig{
+var DefaultDiffOptions = &DiffOptions{
 	IgnoreIndex: false,
+}
+
+type OutputOptions struct {
+	Plain  bool
+	Silent bool
+}
+
+var DefaultOutputOptions = &OutputOptions{
+	Plain:  false,
+	Silent: false,
 }

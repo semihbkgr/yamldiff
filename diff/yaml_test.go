@@ -23,7 +23,7 @@ func TestDiffContextDiffs(t *testing.T) {
 	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight)
 	assert.NoError(t, err)
 
-	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
+	fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
 	assert.Len(t, fileDiffs, 1)
 
 	docDiffs := fileDiffs[0]
@@ -34,7 +34,7 @@ func TestFileDiffsHasDifference(t *testing.T) {
 	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight)
 	assert.NoError(t, err)
 
-	fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
+	fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
 	assert.True(t, fileDiffs.HasDifference())
 }
 
@@ -113,7 +113,7 @@ func TestDiffsArray(t *testing.T) {
 		rightYaml := toYamlE(t, arrayYamlDiff.right)
 		diffCtx, err := NewDiffContextBytes(leftYaml, rightYaml)
 		assert.NoError(t, err)
-		fileDiffs := diffCtx.Diffs(DefaultDiffConfig)
+		fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
 
 		assert.Len(t, fileDiffs, 1)
 		docDiffs := fileDiffs[0]
@@ -131,7 +131,7 @@ func TestDiffsArray(t *testing.T) {
 			rightYaml := toYamlE(t, arrayYamlDiff.right)
 			diffCtx, err := NewDiffContextBytes(leftYaml, rightYaml)
 			assert.NoError(t, err)
-			fileDiffs := diffCtx.Diffs(&DiffConfig{IgnoreIndex: true})
+			fileDiffs := diffCtx.Diffs(&DiffOptions{IgnoreIndex: true})
 
 			assert.Len(t, fileDiffs, 1)
 			docDiffs := fileDiffs[0]
