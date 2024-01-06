@@ -8,8 +8,6 @@ import (
 	"github.com/goccy/go-yaml/parser"
 )
 
-//todo: sort output diffs
-
 type DiffContext struct {
 	left  *ast.File
 	right *ast.File
@@ -69,6 +67,16 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
 
+	// Wrap MappingValueNode by MappingNode if needed.
+	if leftNode.Type() == ast.MappingType && rightNode.Type() == ast.MappingValueType {
+		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
+	} else if leftNode.Type() == ast.MappingValueType && rightNode.Type() == ast.MappingType {
+		leftNode = ast.Mapping(leftNode.GetToken(), false, leftNode.(*ast.MappingValueNode))
+	} else if leftNode.Type() == ast.MappingValueType && rightNode.Type() == ast.MappingValueType {
+		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
+		leftNode = ast.Mapping(leftNode.GetToken(), false, leftNode.(*ast.MappingValueNode))
+	}
+
 	if leftNode.Type() != rightNode.Type() {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
@@ -96,16 +104,12 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 		if leftFloatNode.Value != rightFloatNode.Value {
 			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 		}
-	case ast.MappingValueType: // when MappingNode's value size is one
-		leftMappingValueNode := leftNode.(*ast.MappingValueNode)
-		rightMappingValueNode := rightNode.(*ast.MappingValueNode)
-		if leftMappingValueNode.Key.String() != rightMappingValueNode.Key.String() {
-			return []*Diff{
-				{NodeLeft: leftMappingValueNode.Value, NodeRight: nil},
-				{NodeLeft: nil, NodeRight: rightMappingValueNode.Value},
-			}
+	case ast.BoolType:
+		leftBoolNode := leftNode.(*ast.BoolNode)
+		rightBoolNode := rightNode.(*ast.BoolNode)
+		if leftBoolNode.Value != rightBoolNode.Value {
+			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 		}
-		return compareNodes(leftMappingValueNode.Value, rightMappingValueNode.Value, conf)
 	}
 	return nil
 }
