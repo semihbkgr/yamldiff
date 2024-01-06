@@ -29,6 +29,7 @@ func Execute() {
 }
 
 var exitOnDifference = false
+var plainOutput = false
 var diffConfig = diff.DefaultDiffConfig
 
 func run(cmd *cobra.Command, args []string) error {
@@ -38,7 +39,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	diffs := diffCtx.Diffs(diffConfig)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs.OutputString(!plainOutput))
 
 	if exitOnDifference && diffs.HasDifference() {
 		return errors.New("yaml files have difference(s)")
@@ -50,6 +51,7 @@ func run(cmd *cobra.Command, args []string) error {
 func init() {
 	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
 	rootCmd.Flags().BoolVarP(&diffConfig.IgnoreIndex, "ignore", "i", diffConfig.IgnoreIndex, "ignore indexes in array")
+	rootCmd.Flags().BoolVarP(&plainOutput, "plain", "p", plainOutput, "uncolored output")
 }
 
 // buildVersion is set by ldflags

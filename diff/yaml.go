@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 )
@@ -241,24 +242,41 @@ func ignoreIndexes(diffs []*Diff, conf *DiffConfig) []*Diff {
 	return resultDiffs
 }
 
-func (d DocDiffs) String() string {
+func (d DocDiffs) OutputString(colored bool) string {
 	b := strings.Builder{}
 	for _, diff := range d {
 		if diff.NodeLeft == nil { // Added
+			sign := "+"
 			path := nodePathString(diff.NodeRight)
-			nodeType := diff.NodeRight.Type()
 			value := nodeValueString(diff.NodeRight)
-			b.WriteString(fmt.Sprintf("+ %s: <%s> %s", path, nodeType, value))
+			if colored {
+				sign = color.HiGreenString(sign)
+				path = color.HiGreenString(path)
+				value = color.HiWhiteString(value)
+			}
+			b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
 		} else if diff.NodeRight == nil { //Deleted
+			sign := "-"
 			path := nodePathString(diff.NodeLeft)
-			nodeType := diff.NodeLeft.Type()
 			value := nodeValueString(diff.NodeLeft)
-			b.WriteString(fmt.Sprintf("- %s: <%s> %s", path, nodeType, value))
+			if colored {
+				sign = color.HiRedString(sign)
+				path = color.HiRedString(path)
+				value = color.HiWhiteString(value)
+			}
+			b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
 		} else { //Modified
+			sign := "~"
 			path := nodePathString(diff.NodeLeft)
 			leftValue := nodeValueString(diff.NodeLeft)
 			rightValue := nodeValueString(diff.NodeRight)
-			b.WriteString(fmt.Sprintf("~ %s: <%s> %s -> <%s> %s", path, diff.NodeLeft.Type(), leftValue, diff.NodeRight.Type(), rightValue))
+			if colored {
+				sign = color.HiYellowString(sign)
+				path = color.HiYellowString(path)
+				leftValue = color.HiWhiteString(leftValue)
+				rightValue = color.HiWhiteString(rightValue)
+			}
+			b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
 		}
 		b.WriteRune('\n')
 	}
@@ -294,10 +312,10 @@ func nodeValueString(n ast.Node) string {
 
 type FileDiffs []DocDiffs
 
-func (d FileDiffs) String() string {
+func (d FileDiffs) OutputString(colored bool) string {
 	docDiffsStrings := make([]string, 0, len(d))
 	for _, docDiffs := range d {
-		docDiffsStrings = append(docDiffsStrings, docDiffs.String())
+		docDiffsStrings = append(docDiffsStrings, docDiffs.OutputString(colored))
 	}
 	return strings.Join(docDiffsStrings, "\n---\n")
 }
