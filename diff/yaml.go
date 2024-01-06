@@ -2,6 +2,7 @@ package diff
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/goccy/go-yaml/ast"
@@ -56,6 +57,35 @@ type DocDiffs []*Diff
 
 func NewDocDiffs(ln, rn *ast.DocumentNode, conf *DiffConfig) DocDiffs {
 	return compareNodes(ln.Body, rn.Body, conf)
+}
+
+func (a DocDiffs) Len() int {
+	return len(a)
+}
+
+func (a DocDiffs) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+func (a DocDiffs) Less(i, j int) bool {
+	diffA := a[i]
+	diffB := a[j]
+	var nodeA ast.Node
+	var nodeB ast.Node
+
+	if diffA.NodeLeft != nil {
+		nodeA = diffA.NodeLeft
+	} else {
+		nodeA = diffA.NodeRight
+	}
+
+	if diffB.NodeLeft != nil {
+		nodeB = diffB.NodeLeft
+	} else {
+		nodeB = diffB.NodeRight
+	}
+
+	return nodeA.GetToken().Position.Line < nodeB.GetToken().Position.Line
 }
 
 func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
@@ -244,6 +274,8 @@ func nodePathString(n ast.Node) string {
 	return path
 }
 
+// todo: fix output and comparison of MappingValueNode (when left node is nil, right node is MappingValueNode, or vice versa)
+
 func nodeValueString(n ast.Node) string {
 	switch n.Type() {
 	case ast.MappingType, ast.SequenceType:
@@ -284,7 +316,9 @@ func NewFileDiffs(ln, rn *ast.File, conf *DiffConfig) FileDiffs {
 		if len(rn.Docs) > i {
 			r = rn.Docs[i]
 		}
-		docDiffs[i] = NewDocDiffs(l, r, conf)
+		docDiff := NewDocDiffs(l, r, conf)
+		sort.Sort(docDiff)
+		docDiffs[i] = docDiff
 	}
 	return docDiffs
 }
