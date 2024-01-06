@@ -67,6 +67,7 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffConfig) []*Diff {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
 
+	// When a map's key size is one, it is represented by MappingValueNode instead of MappingNode in ast.
 	// Wrap MappingValueNode by MappingNode if needed.
 	if leftNode.Type() == ast.MappingType && rightNode.Type() == ast.MappingValueType {
 		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
@@ -216,17 +217,17 @@ func (d DocDiffs) String() string {
 		if diff.NodeLeft == nil { // Added
 			path := nodePathString(diff.NodeRight)
 			nodeType := diff.NodeRight.Type()
-			value := diff.NodeRight.String()
+			value := nodeValueString(diff.NodeRight)
 			b.WriteString(fmt.Sprintf("+ %s: <%s> %s", path, nodeType, value))
 		} else if diff.NodeRight == nil { //Deleted
 			path := nodePathString(diff.NodeLeft)
 			nodeType := diff.NodeLeft.Type()
-			value := diff.NodeLeft.String()
+			value := nodeValueString(diff.NodeLeft)
 			b.WriteString(fmt.Sprintf("- %s: <%s> %s", path, nodeType, value))
 		} else { //Modified
 			path := nodePathString(diff.NodeLeft)
-			leftValue := diff.NodeLeft.String()
-			rightValue := diff.NodeRight.String()
+			leftValue := nodeValueString(diff.NodeLeft)
+			rightValue := nodeValueString(diff.NodeRight)
 			b.WriteString(fmt.Sprintf("~ %s: <%s> %s -> <%s> %s", path, diff.NodeLeft.Type(), leftValue, diff.NodeRight.Type(), rightValue))
 		}
 		b.WriteRune('\n')
@@ -235,7 +236,28 @@ func (d DocDiffs) String() string {
 }
 
 func nodePathString(n ast.Node) string {
-	return n.GetPath()[2:]
+	path := n.GetPath()[2:]
+	// Path of the MappingNode points to the first key in the map.
+	if n.Type() == ast.MappingType {
+		path = path[:strings.LastIndex(path, ".")]
+	}
+	return path
+}
+
+func nodeValueString(n ast.Node) string {
+	switch n.Type() {
+	case ast.MappingType, ast.SequenceType:
+		indent := n.GetToken().Position.IndentNum
+		s := n.String()
+		lines := strings.Split(s, "\n")
+		for i, line := range lines {
+			lines[i] = fmt.Sprintf("  %s", line[indent:])
+		}
+		s = strings.Join(lines, "\n")
+		return fmt.Sprintf("\n%s", s)
+	default:
+		return n.String()
+	}
 }
 
 type FileDiffs []DocDiffs
