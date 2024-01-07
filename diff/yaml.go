@@ -108,15 +108,17 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffOptions) []*Diff {
 		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
 	}
 
-	// When a map's key size is one, it is represented by MappingValueNode instead of MappingNode in ast.
+	// When the map's key size is one, it is just represented by MappingValueNode instead of MappingNode in AST.
 	// Wrap MappingValueNode by MappingNode if needed.
-	if leftNode.Type() == ast.MappingType && rightNode.Type() == ast.MappingValueType {
-		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
-	} else if leftNode.Type() == ast.MappingValueType && rightNode.Type() == ast.MappingType {
+	if leftNode.Type() == ast.MappingValueType {
+		path := leftNode.GetPath()
 		leftNode = ast.Mapping(leftNode.GetToken(), false, leftNode.(*ast.MappingValueNode))
-	} else if leftNode.Type() == ast.MappingValueType && rightNode.Type() == ast.MappingValueType {
+		leftNode.SetPath(path)
+	}
+	if rightNode.Type() == ast.MappingValueType {
+		path := rightNode.GetPath()
 		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
-		leftNode = ast.Mapping(leftNode.GetToken(), false, leftNode.(*ast.MappingValueNode))
+		rightNode.SetPath(path)
 	}
 
 	if leftNode.Type() != rightNode.Type() {
@@ -163,7 +165,15 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions
 	for k, leftValue := range leftKeyValueMap {
 		rightValue, ok := rightKeyValueMap[k]
 		if !ok {
-			keyDiffsMap[k] = []*Diff{{NodeLeft: leftValue.Value, NodeRight: nil}}
+			node := leftValue.Value
+			// wrap the MappingValueNode by MappingNode
+			// todo: extract this logic into a function
+			if node.Type() == ast.MappingValueType {
+				path := node.GetPath()
+				node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
+				node.SetPath(path)
+			}
+			keyDiffsMap[k] = []*Diff{{NodeLeft: node, NodeRight: nil}}
 			continue
 		}
 		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, conf)
@@ -173,7 +183,14 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions
 		if ok {
 			continue
 		}
-		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: rightValue.Value}}
+		node := rightValue.Value
+		// wrap the MappingValueNode by MappingNode
+		if node.Type() == ast.MappingValueType {
+			path := node.GetPath()
+			node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
+			node.SetPath(path)
+		}
+		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: node}}
 	}
 
 	allDiffs := make([]*Diff, 0)
@@ -255,6 +272,7 @@ func ignoreIndexes(diffs []*Diff, conf *DiffOptions) []*Diff {
 func (d DocDiffs) OutputString(opts *OutputOptions) string {
 	b := strings.Builder{}
 	for _, diff := range d {
+		// todo: move this logic to Diff.OutputString
 		if diff.NodeLeft == nil { // Added
 			sign := "+"
 			path := nodePathString(diff.NodeRight)
@@ -340,8 +358,6 @@ func nodePathString(n ast.Node) string {
 	}
 	return path
 }
-
-// todo: fix output and comparison of MappingValueNode (when left node is nil, right node is MappingValueNode, or vice versa)
 
 func nodeValueString(n ast.Node) string {
 	switch n.Type() {
