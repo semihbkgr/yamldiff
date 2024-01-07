@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-app
+  labels:
+    app: web
+    version: "v2"
+spec:
+  containers:
+  - name: web-container
+    image: web-app:2.0
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    resources:
+      limits:
+        memory: 1Gib
+  initContainers:
+  - name: init-container
+    image: init-app:1.0

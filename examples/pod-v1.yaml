@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-app
+  labels:
+    app: web
+    version: "v1"
+spec:
+  containers:
+  - name: web-container
+    image: web-app:1.0
+    ports:
+    - containerPort: 80
+    resources:
+      limits:
+        memory: 512Mib
+        cpu: "300m"
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: app-config
