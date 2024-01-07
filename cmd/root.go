@@ -52,7 +52,8 @@ func init() {
 	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
 	rootCmd.Flags().BoolVarP(&diffOptions.IgnoreIndex, "ignore", "i", diffOptions.IgnoreIndex, "ignore indexes in array")
 	rootCmd.Flags().BoolVarP(&outputOptions.Plain, "plain", "p", outputOptions.Plain, "uncolored output")
-	rootCmd.Flags().BoolVarP(&outputOptions.Silent, "silent", "s", outputOptions.Silent, "print output in silent mode ignoring values")
+	rootCmd.Flags().BoolVarP(&outputOptions.Silent, "silent", "s", outputOptions.Silent, "print output in silent ignoring values")
+	rootCmd.Flags().BoolVarP(&outputOptions.Metadata, "metadata", "m", outputOptions.Metadata, "include metadata in output (not work with silent flag)")
 }
 
 // buildVersion is set by ldflags

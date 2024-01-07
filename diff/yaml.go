@@ -249,51 +249,72 @@ func (d DocDiffs) OutputString(opts *OutputOptions) string {
 			sign := "+"
 			path := nodePathString(diff.NodeRight)
 			value := nodeValueString(diff.NodeRight)
+			metadata := nodeMetadata(diff.NodeRight)
 
 			if !opts.Plain {
 				sign = color.HiGreenString(sign)
 				path = color.HiGreenString(path)
 				value = color.HiWhiteString(value)
+				metadata = color.HiCyanString(metadata)
 			}
 
 			if opts.Silent {
 				b.WriteString(fmt.Sprintf("%s %s", sign, path))
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				}
 			}
+
 		} else if diff.NodeRight == nil { //Deleted
 			sign := "-"
 			path := nodePathString(diff.NodeLeft)
 			value := nodeValueString(diff.NodeLeft)
+			metadata := nodeMetadata(diff.NodeLeft)
 
 			if !opts.Plain {
 				sign = color.HiRedString(sign)
 				path = color.HiRedString(path)
 				value = color.HiWhiteString(value)
+				metadata = color.HiCyanString(metadata)
 			}
 
 			if opts.Silent {
 				b.WriteString(fmt.Sprintf("%s %s", sign, path))
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				}
 			}
 		} else { //Modified
 			sign := "~"
 			path := nodePathString(diff.NodeLeft)
 			leftValue := nodeValueString(diff.NodeLeft)
 			rightValue := nodeValueString(diff.NodeRight)
+			leftMetadata := nodeMetadata(diff.NodeLeft)
+			rightMetadata := nodeMetadata(diff.NodeRight)
 
 			if !opts.Plain {
 				sign = color.HiYellowString(sign)
 				path = color.HiYellowString(path)
 				leftValue = color.HiWhiteString(leftValue)
 				rightValue = color.HiWhiteString(rightValue)
+				leftMetadata = color.HiCyanString(leftMetadata)
+				rightMetadata = color.HiCyanString(rightMetadata)
 			}
 
 			if opts.Silent {
 				b.WriteString(fmt.Sprintf("%s %s", sign, path))
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s: %s %s -> %s %s", sign, path, leftMetadata, leftValue, rightMetadata, rightValue))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
+				}
 			}
 		}
 		b.WriteRune('\n')
@@ -326,6 +347,10 @@ func nodeValueString(n ast.Node) string {
 	default:
 		return n.String()
 	}
+}
+
+func nodeMetadata(n ast.Node) string {
+	return fmt.Sprintf("[line:%d <%s>]", n.GetToken().Position.Line, n.Type())
 }
 
 type FileDiffs []DocDiffs
@@ -368,11 +393,13 @@ var DefaultDiffOptions = &DiffOptions{
 }
 
 type OutputOptions struct {
-	Plain  bool
-	Silent bool
+	Plain    bool
+	Silent   bool
+	Metadata bool
 }
 
 var DefaultOutputOptions = &OutputOptions{
-	Plain:  false,
-	Silent: false,
+	Plain:    false,
+	Silent:   false,
+	Metadata: false,
 }
