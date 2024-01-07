@@ -15,12 +15,17 @@ type DiffContext struct {
 	right *ast.File
 }
 
-func NewDiffContext(filenameLeft, filenameRight string) (*DiffContext, error) {
-	yamlLeft, err := parser.ParseFile(filenameLeft, parser.ParseComments)
+func NewDiffContext(filenameLeft, filenameRight string, comments bool) (*DiffContext, error) {
+	var parserMode parser.Mode
+	if comments {
+		parserMode += parser.ParseComments
+	}
+
+	yamlLeft, err := parser.ParseFile(filenameLeft, parserMode)
 	if err != nil {
 		return nil, err
 	}
-	yamlRight, err := parser.ParseFile(filenameRight, parser.ParseComments)
+	yamlRight, err := parser.ParseFile(filenameRight, parserMode)
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +35,17 @@ func NewDiffContext(filenameLeft, filenameRight string) (*DiffContext, error) {
 	}, nil
 }
 
-func NewDiffContextBytes(left, right []byte) (*DiffContext, error) {
-	yamlLeft, err := parser.ParseBytes(left, parser.ParseComments)
+func NewDiffContextBytes(left, right []byte, comments bool) (*DiffContext, error) {
+	var parserMode parser.Mode
+	if comments {
+		parserMode += parser.ParseComments
+	}
+
+	yamlLeft, err := parser.ParseBytes(left, parserMode)
 	if err != nil {
 		return nil, err
 	}
-	yamlRight, err := parser.ParseBytes(right, parser.ParseComments)
+	yamlRight, err := parser.ParseBytes(right, parserMode)
 	if err != nil {
 		return nil, err
 	}
