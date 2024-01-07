@@ -11,8 +11,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:          "yamldiff",
-	Short:        "yaml diff",
+	Use:          "yamldiff <file-left> <file-right>",
+	Short:        "structural comparison of yaml files",
 	Args:         cobra.ExactArgs(2),
 	SilenceUsage: false,
 	RunE:         run,
