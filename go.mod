@@ -5,7 +5,7 @@ go 1.21.0
 require (
 	github.com/goccy/go-yaml v1.11.3
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
