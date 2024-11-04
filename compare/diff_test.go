@@ -13,29 +13,19 @@ const (
 	dataFileRight = "testdata/data-right.yaml"
 )
 
-func TestNewDiffContext(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight, false)
+func TestCompareFile(t *testing.T) {
+	diffs, err := CompareFile(dataFileLeft, dataFileRight, false, DefaultDiffOptions)
 	assert.NoError(t, err)
-	assert.NotNil(t, diffCtx)
-}
-
-func TestDiffContextDiffs(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight, false)
-	assert.NoError(t, err)
-
-	fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
-	assert.Len(t, fileDiffs, 1)
-
-	docDiffs := fileDiffs[0]
+	assert.Len(t, diffs, 1)
+	docDiffs := diffs[0]
 	assert.Len(t, docDiffs, 5)
 }
 
-func TestFileDiffsHasDifference(t *testing.T) {
-	diffCtx, err := NewDiffContext(dataFileLeft, dataFileRight, false)
+func TestFileDiffsHasDiff(t *testing.T) {
+	diffs, err := CompareFile(dataFileLeft, dataFileRight, false, DefaultDiffOptions)
 	assert.NoError(t, err)
 
-	fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
-	assert.True(t, fileDiffs.HasDifference())
+	assert.True(t, diffs.HasDiff())
 }
 
 func TestDiffsArray(t *testing.T) {
@@ -111,9 +101,8 @@ func TestDiffsArray(t *testing.T) {
 	for _, arrayYamlDiff := range arrayYamlDiffs {
 		leftYaml := toYamlE(t, arrayYamlDiff.left)
 		rightYaml := toYamlE(t, arrayYamlDiff.right)
-		diffCtx, err := NewDiffContextBytes(leftYaml, rightYaml, false)
+		fileDiffs, err := Compare(leftYaml, rightYaml, false, DefaultDiffOptions)
 		assert.NoError(t, err)
-		fileDiffs := diffCtx.Diffs(DefaultDiffOptions)
 
 		assert.Len(t, fileDiffs, 1)
 		docDiffs := fileDiffs[0]
@@ -129,9 +118,8 @@ func TestDiffsArray(t *testing.T) {
 		for _, arrayYamlDiff := range arrayYamlDiffs {
 			leftYaml := toYamlE(t, arrayYamlDiff.left)
 			rightYaml := toYamlE(t, arrayYamlDiff.right)
-			diffCtx, err := NewDiffContextBytes(leftYaml, rightYaml, false)
+			fileDiffs, err := Compare(leftYaml, rightYaml, false, DefaultDiffOptions)
 			assert.NoError(t, err)
-			fileDiffs := diffCtx.Diffs(&DiffOptions{IgnoreIndex: true})
 
 			assert.Len(t, fileDiffs, 1)
 			docDiffs := fileDiffs[0]

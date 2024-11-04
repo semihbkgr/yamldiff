@@ -32,15 +32,14 @@ var diffOptions = compare.DefaultDiffOptions
 var outputOptions = compare.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {
-	diffCtx, err := compare.NewDiffContext(args[0], args[1], enableComments)
+	diffs, err := compare.CompareFile(args[0], args[1], enableComments, diffOptions)
 	if err != nil {
 		return err
 	}
 
-	diffs := diffCtx.Diffs(diffOptions)
 	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs.OutputString(outputOptions))
 
-	if exitOnDifference && diffs.HasDifference() {
+	if exitOnDifference && diffs.HasDiff() {
 		return errors.New("yaml files have difference(s)")
 	}
 
