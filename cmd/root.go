@@ -47,12 +47,12 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 func init() {
-	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
-	rootCmd.Flags().BoolVarP(&diffOptions.IgnoreIndex, "ignore", "i", diffOptions.IgnoreIndex, "ignore indexes in array")
-	rootCmd.Flags().BoolVarP(&formatOptions.Plain, "plain", "p", formatOptions.Plain, "uncolored output")
-	rootCmd.Flags().BoolVarP(&formatOptions.Silent, "silent", "s", formatOptions.Silent, "print output in silent ignoring values")
-	rootCmd.Flags().BoolVarP(&formatOptions.Metadata, "metadata", "m", formatOptions.Metadata, "include metadata in the output (not work with silent flag)")
-	rootCmd.Flags().BoolVarP(&enableComments, "comment", "c", enableComments, "display comments in the output")
+	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "Exit with a non-zero status code if differences are found between yaml files.")
+	rootCmd.Flags().BoolVarP(&diffOptions.IgnoreSeqOrder, "unordered", "u", diffOptions.IgnoreSeqOrder, "Ignore the order of items in arrays during comparison.")
+	rootCmd.Flags().BoolVarP(&formatOptions.Plain, "plain", "p", formatOptions.Plain, "Output without any color formatting.")
+	rootCmd.Flags().BoolVarP(&formatOptions.Silent, "silent", "s", formatOptions.Silent, "Suppress output of values, showing only differences.")
+	rootCmd.Flags().BoolVarP(&formatOptions.Metadata, "metadata", "m", formatOptions.Metadata, "Include additional metadata in the output (not applicable with the silent flag).")
+	rootCmd.Flags().BoolVarP(&enableComments, "comment", "c", enableComments, "Include comments in the output when available.")
 }
 
 // buildVersion is set by ldflags

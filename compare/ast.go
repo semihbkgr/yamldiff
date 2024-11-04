@@ -133,7 +133,7 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, opts DiffOption
 		diffs = append(diffs, compareNodes(leftValue, rightValue, opts)...)
 	}
 
-	if opts.IgnoreIndex {
+	if opts.IgnoreSeqOrder {
 		diffs = ignoreIndexes(diffs, opts)
 	}
 

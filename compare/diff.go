@@ -145,6 +145,8 @@ func (d FileDiffs) HasDiff() bool {
 	return len(d) > 0
 }
 
+// Compare compares two yaml files provided as bytes and returns the differences as FileDiffs,
+// or an error if there's an issue parsing the files.
 func Compare(left []byte, right []byte, comments bool, opts DiffOptions) (FileDiffs, error) {
 	var parserMode parser.Mode
 	if comments {
@@ -161,9 +163,11 @@ func Compare(left []byte, right []byte, comments bool, opts DiffOptions) (FileDi
 		return nil, err
 	}
 
-	return compareAst(leftAst, rightAst, opts), nil
+	return CompareAst(leftAst, rightAst, opts), nil
 }
 
+// CompareFile compares two yaml files specified by file paths and returns the differences as FileDiffs,
+// or an error if there's an issue reading or parsing the files.
 func CompareFile(leftFile string, rightFile string, comments bool, opts DiffOptions) (FileDiffs, error) {
 	var parserMode parser.Mode
 	if comments {
@@ -180,10 +184,11 @@ func CompareFile(leftFile string, rightFile string, comments bool, opts DiffOpti
 		return nil, err
 	}
 
-	return compareAst(leftAst, rightAst, opts), nil
+	return CompareAst(leftAst, rightAst, opts), nil
 }
 
-func compareAst(left *ast.File, right *ast.File, opts DiffOptions) FileDiffs {
+// CompareAst compares two yaml documents represented as ASTs and returns the differences as FileDiffs.
+func CompareAst(left *ast.File, right *ast.File, opts DiffOptions) FileDiffs {
 	var docDiffs = make(FileDiffs, max(len(left.Docs), len(left.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
 		var l, r *ast.DocumentNode
@@ -200,17 +205,26 @@ func compareAst(left *ast.File, right *ast.File, opts DiffOptions) FileDiffs {
 	return docDiffs
 }
 
+// DiffOptions specifies options for customizing the behavior of the comparison.
 type DiffOptions struct {
-	IgnoreIndex bool
+	// IgnoreSeqOrder, when true, treats arrays as equal regardless of the order of their items.
+	// For instance, the arrays [1, 2] and [2, 1] will be considered equal.
+	IgnoreSeqOrder bool
 }
 
 var DefaultDiffOptions = DiffOptions{
-	IgnoreIndex: false,
+	IgnoreSeqOrder: false,
 }
 
+// FormatOptions specifies options for formatting the output of the comparison.
 type FormatOptions struct {
-	Plain    bool
-	Silent   bool
+	// Plain disables colored output when set to true.
+	Plain bool
+
+	// Silent suppresses the display of values when set to true.
+	Silent bool
+
+	// Metadata includes additional metadata, such as line numbers or types, when set to true.
 	Metadata bool
 }
 
