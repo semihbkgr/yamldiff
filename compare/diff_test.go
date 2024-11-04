@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -154,4 +155,40 @@ func readFile(t *testing.T, path string) []byte {
 		t.Error(err)
 	}
 	return data
+}
+
+func ExampleCompare() {
+	left := []byte(`
+name: Alice
+city:  New York
+items:
+	- one
+	- two
+`)
+
+	right := []byte(`
+name: Bob
+value: 990
+items:
+	- one
+	- three
+`)
+
+	diffs, err := Compare(left, right, false, DefaultDiffOptions)
+	if err != nil {
+		panic(err)
+	}
+
+	output := diffs.Format(FormatOptions{
+		Plain:    true,
+		Silent:   false,
+		Metadata: false,
+	})
+	fmt.Println(output)
+
+	// Output:
+	// ~ name: Alice -> Bob
+	// - city: New York
+	// + value: 990
+	// ~ items[1]: two -> three
 }
