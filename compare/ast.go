@@ -7,13 +7,13 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
-func compareNodes(leftNode, rightNode ast.Node, conf *DiffOptions) []*Diff {
+func compareNodes(leftNode, rightNode ast.Node, opts DiffOptions) []*Diff {
 	if leftNode == nil {
-		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 	}
 
 	if rightNode == nil {
-		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 	}
 
 	// When the map's key size is one, it is just represented by MappingValueNode instead of MappingNode in AST.
@@ -30,43 +30,43 @@ func compareNodes(leftNode, rightNode ast.Node, conf *DiffOptions) []*Diff {
 	}
 
 	if leftNode.Type() != rightNode.Type() {
-		return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 	}
 
 	switch leftNode.Type() {
 	case ast.MappingType:
-		return compareMappingNodes(leftNode.(*ast.MappingNode), rightNode.(*ast.MappingNode), conf)
+		return compareMappingNodes(leftNode.(*ast.MappingNode), rightNode.(*ast.MappingNode), opts)
 	case ast.SequenceType:
-		return compareSequenceNodes(leftNode.(*ast.SequenceNode), rightNode.(*ast.SequenceNode), conf)
+		return compareSequenceNodes(leftNode.(*ast.SequenceNode), rightNode.(*ast.SequenceNode), opts)
 	case ast.StringType:
 		leftStringNode := leftNode.(*ast.StringNode)
 		rightStringNode := rightNode.(*ast.StringNode)
 		if leftStringNode.Value != rightStringNode.Value {
-			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 		}
 	case ast.IntegerType:
 		leftIntegerNode := leftNode.(*ast.IntegerNode)
 		rightIntegerNode := rightNode.(*ast.IntegerNode)
 		if leftIntegerNode.Value != rightIntegerNode.Value {
-			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 		}
 	case ast.FloatType:
 		leftFloatNode := leftNode.(*ast.FloatNode)
 		rightFloatNode := rightNode.(*ast.FloatNode)
 		if leftFloatNode.Value != rightFloatNode.Value {
-			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 		}
 	case ast.BoolType:
 		leftBoolNode := leftNode.(*ast.BoolNode)
 		rightBoolNode := rightNode.(*ast.BoolNode)
 		if leftBoolNode.Value != rightBoolNode.Value {
-			return []*Diff{{NodeLeft: leftNode, NodeRight: rightNode}}
+			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 		}
 	}
 	return nil
 }
 
-func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions) []*Diff {
+func compareMappingNodes(leftNode, rightNode *ast.MappingNode, opts DiffOptions) []*Diff {
 	leftKeyValueMap := mappingValueNodesIntoMap(leftNode)
 	rightKeyValueMap := mappingValueNodesIntoMap(rightNode)
 	keyDiffsMap := make(map[string][]*Diff)
@@ -81,10 +81,10 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions
 				node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
 				node.SetPath(path)
 			}
-			keyDiffsMap[k] = []*Diff{{NodeLeft: node, NodeRight: nil}}
+			keyDiffsMap[k] = []*Diff{{leftNode: node, rightNode: nil}}
 			continue
 		}
-		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, conf)
+		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, opts)
 	}
 	for k, rightValue := range rightKeyValueMap {
 		_, ok := keyDiffsMap[k]
@@ -98,7 +98,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, conf *DiffOptions
 			node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
 			node.SetPath(path)
 		}
-		keyDiffsMap[k] = []*Diff{{NodeLeft: nil, NodeRight: node}}
+		keyDiffsMap[k] = []*Diff{{leftNode: nil, rightNode: node}}
 	}
 
 	allDiffs := make([]*Diff, 0)
@@ -119,7 +119,7 @@ func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNo
 	return keyValueMap
 }
 
-func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffOptions) []*Diff {
+func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, opts DiffOptions) []*Diff {
 	diffs := make([]*Diff, 0)
 	l := max(len(leftNode.Values), len(rightNode.Values))
 	for i := 0; i < l; i++ {
@@ -130,22 +130,22 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, conf *DiffOptio
 		if len(rightNode.Values) > i {
 			rightValue = rightNode.Values[i]
 		}
-		diffs = append(diffs, compareNodes(leftValue, rightValue, conf)...)
+		diffs = append(diffs, compareNodes(leftValue, rightValue, opts)...)
 	}
 
-	if conf.IgnoreIndex {
-		diffs = ignoreIndexes(diffs, conf)
+	if opts.IgnoreIndex {
+		diffs = ignoreIndexes(diffs, opts)
 	}
 
 	return diffs
 }
 
-func ignoreIndexes(diffs []*Diff, conf *DiffOptions) []*Diff {
+func ignoreIndexes(diffs []*Diff, opts DiffOptions) []*Diff {
 	leftNodes := make([]ast.Node, len(diffs))
 	rightNodes := make([]ast.Node, len(diffs))
 	for i, diff := range diffs {
-		leftNodes[i] = diff.NodeLeft
-		rightNodes[i] = diff.NodeRight
+		leftNodes[i] = diff.leftNode
+		rightNodes[i] = diff.rightNode
 	}
 
 	for il, leftNode := range leftNodes {
@@ -156,7 +156,7 @@ func ignoreIndexes(diffs []*Diff, conf *DiffOptions) []*Diff {
 			if rightNode == nil {
 				continue
 			}
-			if len(compareNodes(leftNode, rightNode, conf)) == 0 {
+			if len(compareNodes(leftNode, rightNode, opts)) == 0 {
 				leftNodes[il] = nil
 				rightNodes[ir] = nil
 				break

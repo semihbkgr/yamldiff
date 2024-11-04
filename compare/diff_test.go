@@ -82,17 +82,17 @@ func TestDiffsArray(t *testing.T) {
 	}
 
 	compareIntegerDiff := func(t *testing.T, diff *Diff, expected [2]int) {
-		if diff.NodeLeft == nil {
+		if diff.leftNode == nil {
 			assert.EqualValues(t, 0, expected[0])
 		} else {
-			intNode := diff.NodeLeft.(*ast.IntegerNode)
+			intNode := diff.leftNode.(*ast.IntegerNode)
 			value := intNode.Value.(uint64)
 			assert.EqualValues(t, value, expected[0])
 		}
-		if diff.NodeRight == nil {
+		if diff.rightNode == nil {
 			assert.EqualValues(t, 0, expected[1])
 		} else {
-			intNode := diff.NodeRight.(*ast.IntegerNode)
+			intNode := diff.rightNode.(*ast.IntegerNode)
 			value := intNode.Value.(uint64)
 			assert.EqualValues(t, value, expected[1])
 		}

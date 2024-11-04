@@ -29,7 +29,7 @@ func Execute() {
 var exitOnDifference = false
 var enableComments = false
 var diffOptions = compare.DefaultDiffOptions
-var outputOptions = compare.DefaultOutputOptions
+var formatOptions = compare.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {
 	diffs, err := compare.CompareFile(args[0], args[1], enableComments, diffOptions)
@@ -37,7 +37,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s", diffs.OutputString(outputOptions))
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", diffs.Format(formatOptions))
 
 	if exitOnDifference && diffs.HasDiff() {
 		return errors.New("yaml files have difference(s)")
@@ -49,9 +49,9 @@ func run(cmd *cobra.Command, args []string) error {
 func init() {
 	rootCmd.Flags().BoolVarP(&exitOnDifference, "exit", "e", false, "returns non-zero exit status if there is a difference between yaml files")
 	rootCmd.Flags().BoolVarP(&diffOptions.IgnoreIndex, "ignore", "i", diffOptions.IgnoreIndex, "ignore indexes in array")
-	rootCmd.Flags().BoolVarP(&outputOptions.Plain, "plain", "p", outputOptions.Plain, "uncolored output")
-	rootCmd.Flags().BoolVarP(&outputOptions.Silent, "silent", "s", outputOptions.Silent, "print output in silent ignoring values")
-	rootCmd.Flags().BoolVarP(&outputOptions.Metadata, "metadata", "m", outputOptions.Metadata, "include metadata in the output (not work with silent flag)")
+	rootCmd.Flags().BoolVarP(&formatOptions.Plain, "plain", "p", formatOptions.Plain, "uncolored output")
+	rootCmd.Flags().BoolVarP(&formatOptions.Silent, "silent", "s", formatOptions.Silent, "print output in silent ignoring values")
+	rootCmd.Flags().BoolVarP(&formatOptions.Metadata, "metadata", "m", formatOptions.Metadata, "include metadata in the output (not work with silent flag)")
 	rootCmd.Flags().BoolVarP(&enableComments, "comment", "c", enableComments, "display comments in the output")
 }
 
