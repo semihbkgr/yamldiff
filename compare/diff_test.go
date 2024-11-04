@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"os"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -9,22 +10,27 @@ import (
 )
 
 const (
-	dataFileLeft  = "testdata/data-left.yaml"
-	dataFileRight = "testdata/data-right.yaml"
+	fileLeft  = "testdata/file-left.yaml"
+	fileRight = "testdata/file-right.yaml"
 )
 
 func TestCompareFile(t *testing.T) {
-	diffs, err := CompareFile(dataFileLeft, dataFileRight, false, DefaultDiffOptions)
+	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
 	assert.NoError(t, err)
 	assert.Len(t, diffs, 1)
-	docDiffs := diffs[0]
-	assert.Len(t, docDiffs, 5)
+	assert.Len(t, diffs[0], 5)
+}
+
+func TestCompare(t *testing.T) {
+	diffs, err := Compare(readFile(t, fileLeft), readFile(t, fileRight), false, DefaultDiffOptions)
+	assert.NoError(t, err)
+	assert.Len(t, diffs, 1)
+	assert.Len(t, diffs[0], 5)
 }
 
 func TestFileDiffsHasDiff(t *testing.T) {
-	diffs, err := CompareFile(dataFileLeft, dataFileRight, false, DefaultDiffOptions)
+	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
 	assert.NoError(t, err)
-
 	assert.True(t, diffs.HasDiff())
 }
 
@@ -99,12 +105,13 @@ func TestDiffsArray(t *testing.T) {
 	}
 
 	for _, arrayYamlDiff := range arrayYamlDiffs {
-		leftYaml := toYamlE(t, arrayYamlDiff.left)
-		rightYaml := toYamlE(t, arrayYamlDiff.right)
+		leftYaml := toYaml(t, arrayYamlDiff.left)
+		rightYaml := toYaml(t, arrayYamlDiff.right)
+
 		fileDiffs, err := Compare(leftYaml, rightYaml, false, DefaultDiffOptions)
 		assert.NoError(t, err)
-
 		assert.Len(t, fileDiffs, 1)
+
 		docDiffs := fileDiffs[0]
 		assert.Len(t, docDiffs, len(arrayYamlDiff.expectedDiffs))
 
@@ -114,11 +121,11 @@ func TestDiffsArray(t *testing.T) {
 		}
 	}
 
-	t.Run("ignore index", func(t *testing.T) {
+	t.Run("ignore sequence order", func(t *testing.T) {
 		for _, arrayYamlDiff := range arrayYamlDiffs {
-			leftYaml := toYamlE(t, arrayYamlDiff.left)
-			rightYaml := toYamlE(t, arrayYamlDiff.right)
-			fileDiffs, err := Compare(leftYaml, rightYaml, false, DefaultDiffOptions)
+			leftYaml := toYaml(t, arrayYamlDiff.left)
+			rightYaml := toYaml(t, arrayYamlDiff.right)
+			fileDiffs, err := Compare(leftYaml, rightYaml, false, DiffOptions{IgnoreSeqOrder: true})
 			assert.NoError(t, err)
 
 			assert.Len(t, fileDiffs, 1)
@@ -133,14 +140,18 @@ func TestDiffsArray(t *testing.T) {
 	})
 }
 
-func toYamlE(t *testing.T, a any) []byte {
-	b, err := toYaml(a)
+func toYaml(t *testing.T, a any) []byte {
+	b, err := yaml.Marshal(a)
 	if err != nil {
 		t.Error(err)
 	}
 	return b
 }
 
-func toYaml(a any) ([]byte, error) {
-	return yaml.Marshal(a)
+func readFile(t *testing.T, path string) []byte {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Error(err)
+	}
+	return data
 }
