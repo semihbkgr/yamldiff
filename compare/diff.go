@@ -120,6 +120,11 @@ func (a DocDiffs) Less(i, j int) bool {
 		nodeB = diffB.rightNode
 	}
 
+	//todo: it is still partial ordered, which can cause the inconsistent order of items after sorting
+	if nodeA.GetToken().Position.Line == nodeB.GetToken().Position.Line {
+		return diffA.leftNode != nil
+	}
+
 	return nodeA.GetToken().Position.Line < nodeB.GetToken().Position.Line
 }
 

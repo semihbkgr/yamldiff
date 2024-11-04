@@ -3,6 +3,7 @@ package compare
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -15,11 +16,42 @@ const (
 	fileRight = "testdata/file-right.yaml"
 )
 
+var diffStringLines = []string{
+	"~ people.name: John -> Bob",
+	"~ people.surname: Doe -> Rose",
+	"~ city.name: New York -> San Francisco",
+	"~ item.id: 124 -> 123",
+	"~ item.price: 10.9 -> 10.3",
+}
+
+var diffValues = [][2]string{
+	[2]string{
+		"John", "Bob",
+	},
+	[2]string{
+		"Doe", "Rose",
+	},
+	[2]string{
+		"New York", "San Francisco",
+	},
+	[2]string{
+		"124", "123",
+	},
+	[2]string{
+		"10.9", "10.3",
+	},
+}
+
 func TestCompareFile(t *testing.T) {
 	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
 	assert.NoError(t, err)
 	assert.Len(t, diffs, 1)
 	assert.Len(t, diffs[0], 5)
+
+	for i, diff := range diffs[0] {
+		assert.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
+		assert.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
+	}
 }
 
 func TestCompare(t *testing.T) {
@@ -27,6 +59,11 @@ func TestCompare(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, diffs, 1)
 	assert.Len(t, diffs[0], 5)
+
+	for i, diff := range diffs[0] {
+		assert.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
+		assert.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
+	}
 }
 
 func TestFileDiffsHasDiff(t *testing.T) {
@@ -141,20 +178,17 @@ func TestDiffsArray(t *testing.T) {
 	})
 }
 
-func toYaml(t *testing.T, a any) []byte {
-	b, err := yaml.Marshal(a)
-	if err != nil {
-		t.Error(err)
-	}
-	return b
-}
+func TestFormat(t *testing.T) {
+	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
+	assert.NoError(t, err)
 
-func readFile(t *testing.T, path string) []byte {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
+	output := diffs.Format(FormatOptions{
+		Plain:    true,
+		Silent:   false,
+		Metadata: false,
+	})
+
+	assert.Equal(t, output, strings.Join(diffStringLines, "\n"))
 }
 
 func ExampleCompare() {
@@ -191,4 +225,20 @@ items:
 	// - city: New York
 	// + value: 990
 	// ~ items[1]: two -> three
+}
+
+func toYaml(t *testing.T, a any) []byte {
+	b, err := yaml.Marshal(a)
+	if err != nil {
+		t.Error(err)
+	}
+	return b
+}
+
+func readFile(t *testing.T, path string) []byte {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Error(err)
+	}
+	return data
 }
