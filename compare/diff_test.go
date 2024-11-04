@@ -1,4 +1,4 @@
-package diff
+package compare
 
 import (
 	"testing"

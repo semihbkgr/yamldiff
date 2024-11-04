@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/semihbkgr/yamldiff/diff"
+	"github.com/semihbkgr/yamldiff/compare"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +19,6 @@ var rootCmd = &cobra.Command{
 	Version:      version(),
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -30,11 +28,11 @@ func Execute() {
 
 var exitOnDifference = false
 var enableComments = false
-var diffOptions = diff.DefaultDiffOptions
-var outputOptions = diff.DefaultOutputOptions
+var diffOptions = compare.DefaultDiffOptions
+var outputOptions = compare.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {
-	diffCtx, err := diff.NewDiffContext(args[0], args[1], enableComments)
+	diffCtx, err := compare.NewDiffContext(args[0], args[1], enableComments)
 	if err != nil {
 		return err
 	}
