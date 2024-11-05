@@ -1,8 +1,8 @@
 # yamldiff
 
-yamldiff is a utility tool that applies a structural comparison on yaml files, making it easier to identify and understand the differences between them.
+yamldiff is a utility tool for performing structural comparisons on YAML files, helping you easily identify and understand differences between them.
 
-It basically compares the structural differences between two yaml files.
+It focuses on highlighting structural variations between two YAML files.
 
 ![example](images/example.png)
 
@@ -14,24 +14,22 @@ $ go install github.com/semihbkgr/yamldiff@latest
 
 Run with `help` flag to display a list of available options
 
-``` bash
+```bash
 $ yamldiff --help
-
-yamldiff is a tool for comparing the structural differences between two yaml files
+structural comparison on two yaml files
 
 Usage:
-  yamldiff <file-left> <file-right> [flags]
+  yamldiff [flags] <file-left> <file-right>
 
 Flags:
-  -c, --comment    display comments in the output
-  -e, --exit       returns non-zero exit status if there is a difference between yaml files
-  -h, --help       help for yamldiff
-  -i, --ignore     ignore indexes in array
-  -m, --metadata   include metadata in the output (not work with silent flag)
-  -p, --plain      uncolored output
-  -s, --silent     print output in silent ignoring values
-  -v, --version    version for yamldiff
-
+  -c, --comment     Include comments in the output when available.
+  -e, --exit        Exit with a non-zero status code if differences are found between yaml files.
+  -h, --help        help for yamldiff
+  -m, --metadata    Include additional metadata in the output (not applicable with the silent flag).
+  -p, --plain       Output without any color formatting.
+  -s, --silent      Suppress output of values, showing only differences.
+  -u, --unordered   Ignore the order of items in arrays during comparison.
+  -v, --version     version for yamldiff
 ```
 
 ## Example
@@ -41,3 +39,44 @@ $ yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
 ```
 
 ![example-metadata](images/example-metadata.png)
+
+It can also be imported as a library in Go.
+
+```go
+func main() {
+  left := []byte(`
+name: Alice
+city:  New York
+items:
+  - one
+  - two
+`)
+
+  right := []byte(`
+name: Bob
+value: 990
+items:
+  - one
+  - three
+`)
+
+  diffs, err := compare.Compare(left, right, false, compare.DefaultDiffOptions)
+  if err != nil {
+    panic(err)
+  }
+
+  output := diffs.Format(compare.FormatOptions{
+    Plain:    true,
+    Silent:   false,
+    Metadata: false,
+  })
+  fmt.Println(output)
+}
+```
+
+```out
+~ name: Alice -> Bob
+- city: New York
++ value: 990
+~ items[1]: two -> three
+```

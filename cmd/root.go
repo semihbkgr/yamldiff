@@ -11,12 +11,13 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:          "yamldiff <file-left> <file-right>",
-	Short:        "structural comparison of yaml files",
-	Args:         cobra.ExactArgs(2),
-	SilenceUsage: false,
-	RunE:         run,
-	Version:      version(),
+	Use:                   "yamldiff [flags] <file-left> <file-right>",
+	Short:                 "structural comparison on two yaml files",
+	Args:                  cobra.ExactArgs(2),
+	SilenceUsage:          false,
+	DisableFlagsInUseLine: true,
+	RunE:                  run,
+	Version:               version(),
 }
 
 func Execute() {
