@@ -46,7 +46,7 @@ It can also be imported as a library in Go.
 func main() {
   left := []byte(`
 name: Alice
-city:  New York
+city: New York
 items:
   - one
   - two
