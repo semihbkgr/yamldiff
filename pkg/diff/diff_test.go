@@ -194,18 +194,18 @@ func TestFormat(t *testing.T) {
 func ExampleCompare() {
 	left := []byte(`
 name: Alice
-city:  New York
+city: New York
 items:
-	- one
-	- two
+    - one
+    - two
 `)
 
 	right := []byte(`
 name: Bob
 value: 990
 items:
-	- one
-	- three
+    - one
+    - three
 `)
 
 	diffs, err := Compare(left, right, false, DefaultDiffOptions)
