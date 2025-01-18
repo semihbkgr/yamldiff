@@ -1,4 +1,4 @@
-package compare
+package diff
 
 import (
 	"fmt"

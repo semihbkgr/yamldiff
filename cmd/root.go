@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/semihbkgr/yamldiff/compare"
+	"github.com/semihbkgr/yamldiff/pkg/diff"
 	"github.com/spf13/cobra"
 )
 
@@ -29,11 +29,11 @@ func Execute() {
 
 var exitOnDifference = false
 var enableComments = false
-var diffOptions = compare.DefaultDiffOptions
-var formatOptions = compare.DefaultOutputOptions
+var diffOptions = diff.DefaultDiffOptions
+var formatOptions = diff.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {
-	diffs, err := compare.CompareFile(args[0], args[1], enableComments, diffOptions)
+	diffs, err := diff.CompareFile(args[0], args[1], enableComments, diffOptions)
 	if err != nil {
 		return err
 	}

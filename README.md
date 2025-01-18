@@ -60,12 +60,12 @@ items:
   - three
 `)
 
-  diffs, err := compare.Compare(left, right, false, compare.DefaultDiffOptions)
+  diffs, err := diff.Compare(left, right, false, diff.DefaultDiffOptions)
   if err != nil {
     panic(err)
   }
 
-  output := diffs.Format(compare.FormatOptions{
+  output := diffs.Format(diff.FormatOptions{
     Plain:    true,
     Silent:   false,
     Metadata: false,

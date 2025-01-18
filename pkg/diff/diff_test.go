@@ -1,4 +1,4 @@
-package compare
+package diff
 
 import (
 	"fmt"
@@ -25,19 +25,19 @@ var diffStringLines = []string{
 }
 
 var diffValues = [][2]string{
-	[2]string{
+	{
 		"John", "Bob",
 	},
-	[2]string{
+	{
 		"Doe", "Rose",
 	},
-	[2]string{
+	{
 		"New York", "San Francisco",
 	},
-	[2]string{
+	{
 		"124", "123",
 	},
-	[2]string{
+	{
 		"10.9", "10.3",
 	},
 }
