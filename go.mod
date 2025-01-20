@@ -8,7 +8,16 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-require golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+require (
+	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/charmbracelet/lipgloss v1.0.0 // indirect
+	github.com/charmbracelet/x/ansi v0.4.2 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/muesli/termenv v0.15.2 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -1,9 +1,6 @@
 package diff
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/goccy/go-yaml/ast"
 )
 
@@ -175,33 +172,4 @@ func ignoreIndexes(diffs []*Diff, opts DiffOptions) []*Diff {
 	}
 
 	return resultDiffs
-}
-
-func nodePathString(n ast.Node) string {
-	path := n.GetPath()[2:]
-	// Path of the MappingNode points to the first key in the map.
-	if n.Type() == ast.MappingType {
-		path = path[:strings.LastIndex(path, ".")]
-	}
-	return path
-}
-
-func nodeValueString(n ast.Node) string {
-	switch n.Type() {
-	case ast.MappingType, ast.SequenceType:
-		indent := n.GetToken().Position.IndentNum
-		s := n.String()
-		lines := strings.Split(s, "\n")
-		for i, line := range lines {
-			lines[i] = fmt.Sprintf("  %s", line[indent:])
-		}
-		s = strings.Join(lines, "\n")
-		return fmt.Sprintf("\n%s", s)
-	default:
-		return n.String()
-	}
-}
-
-func nodeMetadata(n ast.Node) string {
-	return fmt.Sprintf("[line:%d <%s>]", n.GetToken().Position.Line, n.Type())
 }
