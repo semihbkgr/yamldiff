@@ -23,7 +23,7 @@ func nodeValueString(n ast.Node, indent int) (string, bool) {
 	s := n.String()
 	lines := strings.Split(s, "\n")
 	if len(lines) == 1 {
-		return colorize(s), false
+		return s, false
 	}
 
 	nodeIndentLevel := 0
@@ -36,7 +36,7 @@ func nodeValueString(n ast.Node, indent int) (string, bool) {
 		}
 	}
 
-	return colorize(strings.Join(lines, "\n")), true
+	return strings.Join(lines, "\n"), true
 }
 
 func nodeMetadata(n ast.Node) string {

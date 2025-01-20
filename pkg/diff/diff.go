@@ -26,6 +26,7 @@ func (d *Diff) Format(opts FormatOptions) string {
 		if !opts.Plain {
 			sign = color.HiGreenString(sign)
 			path = color.HiGreenString(path)
+			value = colorize(value)
 			metadata = color.HiCyanString(metadata)
 		}
 
@@ -48,6 +49,7 @@ func (d *Diff) Format(opts FormatOptions) string {
 		if !opts.Plain {
 			sign = color.HiRedString(sign)
 			path = color.HiRedString(path)
+			value = colorize(value)
 			metadata = color.HiCyanString(metadata)
 		}
 
@@ -87,6 +89,8 @@ func (d *Diff) Format(opts FormatOptions) string {
 		if !opts.Plain {
 			sign = color.HiYellowString(sign)
 			path = color.HiYellowString(path)
+			leftValue = colorize(leftValue)
+			rightValue = colorize(rightValue)
 			leftMetadata = color.HiCyanString(leftMetadata)
 			rightMetadata = color.HiCyanString(rightMetadata)
 		}
