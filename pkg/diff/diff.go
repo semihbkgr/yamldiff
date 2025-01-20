@@ -20,13 +20,13 @@ func (d *Diff) Format(opts FormatOptions) string {
 	if d.leftNode == nil { // Added
 		sign := "+"
 		path := nodePathString(d.rightNode)
-		value := nodeValueString(d.rightNode)
+		value, _ := nodeValueString(d.rightNode, 4)
 		metadata := nodeMetadata(d.rightNode)
 
 		if !opts.Plain {
 			sign = color.HiGreenString(sign)
 			path = color.HiGreenString(path)
-			value = color.HiWhiteString(value)
+			value = colorize(value)
 			metadata = color.HiCyanString(metadata)
 		}
 
@@ -43,13 +43,13 @@ func (d *Diff) Format(opts FormatOptions) string {
 	} else if d.rightNode == nil { //Deleted
 		sign := "-"
 		path := nodePathString(d.leftNode)
-		value := nodeValueString(d.leftNode)
+		value, _ := nodeValueString(d.leftNode, 4)
 		metadata := nodeMetadata(d.leftNode)
 
 		if !opts.Plain {
 			sign = color.HiRedString(sign)
 			path = color.HiRedString(path)
-			value = color.HiWhiteString(value)
+			value = colorize(value)
 			metadata = color.HiCyanString(metadata)
 		}
 
@@ -65,16 +65,32 @@ func (d *Diff) Format(opts FormatOptions) string {
 	} else { //Modified
 		sign := "~"
 		path := nodePathString(d.leftNode)
-		leftValue := nodeValueString(d.leftNode)
-		rightValue := nodeValueString(d.rightNode)
+		leftValue, leftMultiLine := nodeValueString(d.leftNode, 4)
+		rightValue, rightMultiLine := nodeValueString(d.rightNode, 4)
 		leftMetadata := nodeMetadata(d.leftNode)
 		rightMetadata := nodeMetadata(d.rightNode)
+
+		symbol := "->"
+
+		multiline := leftMultiLine || rightMultiLine
+
+		if multiline && !leftMultiLine {
+			leftValue = fmt.Sprintf("\n    %s", leftValue)
+		}
+
+		if multiline && !rightMultiLine {
+			rightValue = fmt.Sprintf("\n    %s", rightValue)
+		}
+
+		if multiline {
+			symbol = "\n    ↓"
+		}
 
 		if !opts.Plain {
 			sign = color.HiYellowString(sign)
 			path = color.HiYellowString(path)
-			leftValue = color.HiWhiteString(leftValue)
-			rightValue = color.HiWhiteString(rightValue)
+			leftValue = colorize(leftValue)
+			rightValue = colorize(rightValue)
 			leftMetadata = color.HiCyanString(leftMetadata)
 			rightMetadata = color.HiCyanString(rightMetadata)
 		}
@@ -83,9 +99,9 @@ func (d *Diff) Format(opts FormatOptions) string {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else {
 			if opts.Metadata {
-				b.WriteString(fmt.Sprintf("%s %s: %s %s -> %s %s", sign, path, leftMetadata, leftValue, rightMetadata, rightValue))
+				b.WriteString(fmt.Sprintf("%s %s: %s %s %s %s %s", sign, path, leftMetadata, leftValue, symbol, rightMetadata, rightValue))
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s -> %s", sign, path, leftValue, rightValue))
+				b.WriteString(fmt.Sprintf("%s %s: %s %s %s", sign, path, leftValue, symbol, rightValue))
 			}
 		}
 	}
