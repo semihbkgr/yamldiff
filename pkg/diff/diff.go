@@ -212,14 +212,14 @@ func CompareFile(leftFile string, rightFile string, comments bool, opts DiffOpti
 func CompareAst(left *ast.File, right *ast.File, opts DiffOptions) FileDiffs {
 	var docDiffs = make(FileDiffs, max(len(left.Docs), len(left.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
-		var l, r *ast.DocumentNode
+		var l, r ast.Node
 		if len(left.Docs) > i {
-			l = left.Docs[i]
+			l = left.Docs[i].Body
 		}
 		if len(right.Docs) > i {
-			r = right.Docs[i]
+			r = right.Docs[i].Body
 		}
-		docDiff := DocDiffs(compareNodes(l.Body, r.Body, opts))
+		docDiff := DocDiffs(compareNodes(l, r, opts))
 		sort.Sort(docDiff)
 		docDiffs[i] = docDiff
 	}
