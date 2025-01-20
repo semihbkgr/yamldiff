@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/lexer"
+	"github.com/goccy/go-yaml/printer"
 )
 
 func nodePathString(n ast.Node) string {
@@ -20,7 +23,7 @@ func nodeValueString(n ast.Node, indent int) (string, bool) {
 	s := n.String()
 	lines := strings.Split(s, "\n")
 	if len(lines) == 1 {
-		return s, false
+		return colorize(s), false
 	}
 
 	nodeIndentLevel := 0
@@ -33,7 +36,7 @@ func nodeValueString(n ast.Node, indent int) (string, bool) {
 		}
 	}
 
-	return strings.Join(lines, "\n"), true
+	return colorize(strings.Join(lines, "\n")), true
 }
 
 func nodeMetadata(n ast.Node) string {
@@ -47,4 +50,62 @@ func findIndentLevel(s string) int {
 		}
 	}
 	return 0
+}
+
+var p printer.Printer
+
+func init() {
+	p = printer.Printer{}
+	//p.LineNumber = true
+	//p.LineNumberFormat = func(num int) string {
+	//	fn := color.New(color.Bold, color.FgHiWhite).SprintFunc()
+	//	return fn(fmt.Sprintf("%2d | ", num))
+	//}
+	p.Bool = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiMagenta),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Number = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiMagenta),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.MapKey = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiCyan),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Anchor = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiYellow),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Alias = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiYellow),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.String = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiGreen),
+			Suffix: format(color.Reset),
+		}
+	}
+}
+
+const escape = "\x1b"
+
+func format(attr color.Attribute) string {
+	return fmt.Sprintf("%s[%dm", escape, attr)
+}
+
+func colorize(s string) string {
+	tokens := lexer.Tokenize(s)
+	return p.PrintTokens(tokens)
 }
