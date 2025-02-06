@@ -11,8 +11,9 @@ import (
 )
 
 func nodePathString(n ast.Node) string {
-	path := n.GetPath()[2:]
-	// Path of the MappingNode points to the first key in the map.
+	// trim the dolor sign at the beginning of the path
+	path := n.GetPath()[1:]
+	// * Path of the MappingNode points to the first key in the map.
 	if n.Type() == ast.MappingType {
 		path = path[:strings.LastIndex(path, ".")]
 	}
@@ -52,15 +53,15 @@ func findIndentLevel(s string) int {
 	return 0
 }
 
-var p printer.Printer
+var p printer.Printer = newDefaultPrinter()
 
-func init() {
-	p = printer.Printer{}
-	//p.LineNumber = true
-	//p.LineNumberFormat = func(num int) string {
-	//	fn := color.New(color.Bold, color.FgHiWhite).SprintFunc()
-	//	return fn(fmt.Sprintf("%2d | ", num))
-	//}
+func newDefaultPrinter() printer.Printer {
+	if color.NoColor {
+		return printer.Printer{}
+	}
+
+	p := printer.Printer{}
+
 	p.Bool = func() *printer.Property {
 		return &printer.Property{
 			Prefix: format(color.FgHiMagenta),
@@ -97,6 +98,7 @@ func init() {
 			Suffix: format(color.Reset),
 		}
 	}
+	return p
 }
 
 const escape = "\x1b"

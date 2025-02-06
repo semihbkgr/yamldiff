@@ -1,8 +1,6 @@
 # yamldiff
 
-yamldiff is a utility tool for performing structural comparisons on YAML files, helping you easily identify and understand differences between them.
-
-It focuses on highlighting structural variations between two YAML files.
+`yamldiff` is a utility tool designed for comparing the structure of YAML files. It helps you quickly identify and understand differences between them by highlighting structural variations in a clear and concise way.
 
 ![example](images/example.png)
 
@@ -12,7 +10,7 @@ It focuses on highlighting structural variations between two YAML files.
 $ go install github.com/semihbkgr/yamldiff@latest
 ```
 
-Run with `help` flag to display a list of available options
+Run with `help` flag to view a list of available options.
 
 ```bash
 $ yamldiff --help
@@ -40,7 +38,9 @@ $ yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
 
 ![example-metadata](images/example-metadata.png)
 
-It can also be imported as a library in Go.
+## Library
+
+The `yamldiff` module can also be imported as a library in Go, allowing you to integrate YAML comparison functionality into your own applications.
 
 ```go
 func main() {
