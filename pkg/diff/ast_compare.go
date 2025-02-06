@@ -13,19 +13,6 @@ func compareNodes(leftNode, rightNode ast.Node, opts DiffOptions) []*Diff {
 		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 	}
 
-	// When the map's key size is one, it is just represented by MappingValueNode instead of MappingNode in AST.
-	// Wrap MappingValueNode by MappingNode if needed.
-	if leftNode.Type() == ast.MappingValueType {
-		path := leftNode.GetPath()
-		leftNode = ast.Mapping(leftNode.GetToken(), false, leftNode.(*ast.MappingValueNode))
-		leftNode.SetPath(path)
-	}
-	if rightNode.Type() == ast.MappingValueType {
-		path := rightNode.GetPath()
-		rightNode = ast.Mapping(rightNode.GetToken(), false, rightNode.(*ast.MappingValueNode))
-		rightNode.SetPath(path)
-	}
-
 	if leftNode.Type() != rightNode.Type() {
 		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
 	}

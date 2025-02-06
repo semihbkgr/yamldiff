@@ -13,10 +13,6 @@ import (
 func nodePathString(n ast.Node) string {
 	// trim the dolor sign at the beginning of the path
 	path := n.GetPath()[1:]
-	// * Path of the MappingNode points to the first key in the map.
-	if n.Type() == ast.MappingType {
-		path = path[:strings.LastIndex(path, ".")]
-	}
 	return path
 }
 
