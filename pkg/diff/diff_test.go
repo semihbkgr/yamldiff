@@ -17,11 +17,11 @@ const (
 )
 
 var diffStringLines = []string{
-	"~ people.name: John -> Bob",
-	"~ people.surname: Doe -> Rose",
-	"~ city.name: New York -> San Francisco",
-	"~ item.id: 124 -> 123",
-	"~ item.price: 10.9 -> 10.3",
+	"~ .people.name: John -> Bob",
+	"~ .people.surname: Doe -> Rose",
+	"~ .city.name: New York -> San Francisco",
+	"~ .item.id: 124 -> 123",
+	"~ .item.price: 10.9 -> 10.3",
 }
 
 var diffValues = [][2]string{
@@ -221,10 +221,10 @@ items:
 	fmt.Println(output)
 
 	// Output:
-	// ~ name: Alice -> Bob
-	// - city: New York
-	// + value: 990
-	// ~ items[1]: two -> three
+	// ~ .name: Alice -> Bob
+	// - .city: New York
+	// + .value: 990
+	// ~ .items[1]: two -> three
 }
 
 func toYaml(t *testing.T, a any) []byte {

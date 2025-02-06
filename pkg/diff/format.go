@@ -23,7 +23,7 @@ func nodePathString(n ast.Node) string {
 func nodeValueString(n ast.Node, indent int) (string, bool) {
 	s := n.String()
 	lines := strings.Split(s, "\n")
-	if len(lines) == 1 {
+	if len(lines) == 1 && n.Type() != ast.MappingType {
 		return s, false
 	}
 
@@ -57,6 +57,7 @@ var p printer.Printer = newDefaultPrinter()
 
 func newDefaultPrinter() printer.Printer {
 	if color.NoColor {
+		// no color mode
 		return printer.Printer{}
 	}
 
