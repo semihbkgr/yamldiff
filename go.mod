@@ -2,8 +2,10 @@ module github.com/semihbkgr/yamldiff
 
 go 1.21.0
 
+toolchain go1.24.1
+
 require (
-	github.com/goccy/go-yaml v1.15.16
+	github.com/goccy/go-yaml v1.16.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 )
