@@ -4,47 +4,45 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
-func compareNodes(leftNode, rightNode ast.Node, opts DiffOptions) []*Diff {
-	if leftNode == nil {
-		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
+func compareNodes(ln, rn ast.Node, opts DiffOptions) []*Diff {
+	if ln == nil || rn == nil || ln.Type() != rn.Type() {
+		return []*Diff{
+			{
+				leftNode:  ln,
+				rightNode: rn,
+			},
+		}
 	}
 
-	if rightNode == nil {
-		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
-	}
-
-	if leftNode.Type() != rightNode.Type() {
-		return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
-	}
-
-	switch leftNode.Type() {
+	//todo: handle all types
+	switch ln.Type() {
 	case ast.MappingType:
-		return compareMappingNodes(leftNode.(*ast.MappingNode), rightNode.(*ast.MappingNode), opts)
+		return compareMappingNodes(ln.(*ast.MappingNode), rn.(*ast.MappingNode), opts)
 	case ast.SequenceType:
-		return compareSequenceNodes(leftNode.(*ast.SequenceNode), rightNode.(*ast.SequenceNode), opts)
+		return compareSequenceNodes(ln.(*ast.SequenceNode), rn.(*ast.SequenceNode), opts)
 	case ast.StringType:
-		leftStringNode := leftNode.(*ast.StringNode)
-		rightStringNode := rightNode.(*ast.StringNode)
+		leftStringNode := ln.(*ast.StringNode)
+		rightStringNode := rn.(*ast.StringNode)
 		if leftStringNode.Value != rightStringNode.Value {
-			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
+			return []*Diff{{leftNode: ln, rightNode: rn}}
 		}
 	case ast.IntegerType:
-		leftIntegerNode := leftNode.(*ast.IntegerNode)
-		rightIntegerNode := rightNode.(*ast.IntegerNode)
+		leftIntegerNode := ln.(*ast.IntegerNode)
+		rightIntegerNode := rn.(*ast.IntegerNode)
 		if leftIntegerNode.Value != rightIntegerNode.Value {
-			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
+			return []*Diff{{leftNode: ln, rightNode: rn}}
 		}
 	case ast.FloatType:
-		leftFloatNode := leftNode.(*ast.FloatNode)
-		rightFloatNode := rightNode.(*ast.FloatNode)
+		leftFloatNode := ln.(*ast.FloatNode)
+		rightFloatNode := rn.(*ast.FloatNode)
 		if leftFloatNode.Value != rightFloatNode.Value {
-			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
+			return []*Diff{{leftNode: ln, rightNode: rn}}
 		}
 	case ast.BoolType:
-		leftBoolNode := leftNode.(*ast.BoolNode)
-		rightBoolNode := rightNode.(*ast.BoolNode)
+		leftBoolNode := ln.(*ast.BoolNode)
+		rightBoolNode := rn.(*ast.BoolNode)
 		if leftBoolNode.Value != rightBoolNode.Value {
-			return []*Diff{{leftNode: leftNode, rightNode: rightNode}}
+			return []*Diff{{leftNode: ln, rightNode: rn}}
 		}
 	}
 	return nil

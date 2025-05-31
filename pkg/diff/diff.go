@@ -15,6 +15,7 @@ type Diff struct {
 	rightNode ast.Node
 }
 
+// todo: refactor this function
 func (d *Diff) Format(opts FormatOptions) string {
 	var b strings.Builder
 	if d.leftNode == nil { // Added
@@ -88,7 +89,9 @@ func (d *Diff) Format(opts FormatOptions) string {
 
 		if !opts.Plain {
 			sign = color.HiYellowString(sign)
-			path = color.HiYellowString(path)
+			if path != "" {
+				path = color.HiYellowString(path)
+			}
 			leftValue = colorize(leftValue)
 			rightValue = colorize(rightValue)
 			leftMetadata = color.HiWhiteString(leftMetadata)
@@ -97,6 +100,12 @@ func (d *Diff) Format(opts FormatOptions) string {
 
 		if opts.Silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
+		} else if path == "" {
+			if opts.Metadata {
+				b.WriteString(fmt.Sprintf("%s %s %s %s %s %s", sign, leftMetadata, leftValue, symbol, rightMetadata, rightValue))
+			} else {
+				b.WriteString(fmt.Sprintf("%s %s %s %s", sign, leftValue, symbol, rightValue))
+			}
 		} else {
 			if opts.Metadata {
 				b.WriteString(fmt.Sprintf("%s %s: %s %s %s %s %s", sign, path, leftMetadata, leftValue, symbol, rightMetadata, rightValue))
