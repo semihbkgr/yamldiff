@@ -16,24 +16,32 @@ func nodePathString(n ast.Node) string {
 	return path
 }
 
-func nodeValueString(n ast.Node, indent int) (string, bool) {
+func nodeValueString(n ast.Node, indent int, startNewLine bool) (string, bool) {
 	s := n.String()
 	lines := strings.Split(s, "\n")
 	if len(lines) == 1 && n.Type() != ast.MappingType {
 		return s, false
 	}
 
-	nodeIndentLevel := 0
+	nodeIndentLevel := findIndentLevel(lines[0])
 	for i, line := range lines {
 		if i == 0 {
-			nodeIndentLevel = findIndentLevel(line)
-			lines[i] = fmt.Sprintf("%s%s%s", "\n", strings.Repeat(" ", indent), line[nodeIndentLevel:])
-		} else {
 			lines[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", indent), line[nodeIndentLevel:])
+		} else {
+			if startNewLine {
+				lines[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", indent), line[nodeIndentLevel:])
+			} else {
+				lines[i] = fmt.Sprintf("%s%s%s", "  ", strings.Repeat(" ", indent), line[nodeIndentLevel:])
+			}
 		}
 	}
 
-	return strings.Join(lines, "\n"), true
+	builder := strings.Builder{}
+	if startNewLine {
+		builder.WriteString("\n")
+	}
+	builder.WriteString(strings.Join(lines, "\n"))
+	return builder.String(), true
 }
 
 func nodeMetadata(n ast.Node) string {

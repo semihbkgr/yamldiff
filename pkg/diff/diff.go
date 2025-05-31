@@ -21,12 +21,20 @@ func (d *Diff) Format(opts FormatOptions) string {
 	if d.leftNode == nil { // Added
 		sign := "+"
 		path := nodePathString(d.rightNode)
-		value, _ := nodeValueString(d.rightNode, 4)
+		indent := 4
+		newLine := true
+		if path == "" {
+			indent = 0
+			newLine = false
+		}
+		value, _ := nodeValueString(d.rightNode, indent, newLine)
 		metadata := nodeMetadata(d.rightNode)
 
 		if !opts.Plain {
 			sign = color.HiGreenString(sign)
-			path = color.HiGreenString(path)
+			if path != "" {
+				path = color.HiGreenString(path)
+			}
 			value = colorize(value)
 			metadata = color.HiWhiteString(metadata)
 		}
@@ -34,22 +42,38 @@ func (d *Diff) Format(opts FormatOptions) string {
 		if opts.Silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else {
-			if opts.Metadata {
-				b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+			if path == "" {
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s %s", sign, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s", sign, value))
+				}
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				}
 			}
 		}
 
 	} else if d.rightNode == nil { //Deleted
 		sign := "-"
 		path := nodePathString(d.leftNode)
-		value, _ := nodeValueString(d.leftNode, 4)
+		indent := 4
+		newLine := true
+		if path == "" {
+			indent = 0
+			newLine = false
+		}
+		value, _ := nodeValueString(d.leftNode, indent, newLine)
 		metadata := nodeMetadata(d.leftNode)
 
 		if !opts.Plain {
 			sign = color.HiRedString(sign)
-			path = color.HiRedString(path)
+			if path != "" {
+				path = color.HiRedString(path)
+			}
 			value = colorize(value)
 			metadata = color.HiWhiteString(metadata)
 		}
@@ -57,34 +81,57 @@ func (d *Diff) Format(opts FormatOptions) string {
 		if opts.Silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else {
-			if opts.Metadata {
-				b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+			if path == "" {
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s %s", sign, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s", sign, value))
+				}
 			} else {
-				b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				if opts.Metadata {
+					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
+				} else {
+					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
+				}
 			}
 		}
 	} else { //Modified
 		sign := "~"
 		path := nodePathString(d.leftNode)
-		leftValue, leftMultiLine := nodeValueString(d.leftNode, 4)
-		rightValue, rightMultiLine := nodeValueString(d.rightNode, 4)
+		indent := 4
+		newLine := true
+		if path == "" {
+			indent = 0
+			newLine = false
+		}
+		leftValue, leftMultiLine := nodeValueString(d.leftNode, indent, newLine)
+		rightValue, rightMultiLine := nodeValueString(d.rightNode, indent, newLine)
 		leftMetadata := nodeMetadata(d.leftNode)
 		rightMetadata := nodeMetadata(d.rightNode)
 
 		symbol := "->"
 
 		multiline := leftMultiLine || rightMultiLine
-
-		if multiline && !leftMultiLine {
-			leftValue = fmt.Sprintf("\n    %s", leftValue)
-		}
-
-		if multiline && !rightMultiLine {
-			rightValue = fmt.Sprintf("\n    %s", rightValue)
-		}
-
 		if multiline {
 			symbol = "\n    ↓"
+		}
+
+		if multiline && !leftMultiLine {
+			if path != "" {
+				leftValue = fmt.Sprintf("\n    %s", leftValue)
+			} else {
+				rightValue = fmt.Sprintf("\n  %s", rightValue)
+			}
+		} else if multiline && !rightMultiLine {
+			if path != "" {
+				rightValue = fmt.Sprintf("\n    %s", rightValue)
+			} else {
+				rightValue = fmt.Sprintf("\n  %s", rightValue)
+			}
+		} else if multiline {
+			if path == "" {
+				rightValue = fmt.Sprintf("\n  %s", rightValue)
+			}
 		}
 
 		if !opts.Plain {
