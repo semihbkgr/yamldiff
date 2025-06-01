@@ -1,19 +1,13 @@
 package diff
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
-	"github.com/stretchr/testify/assert"
-)
-
-const (
-	fileLeft  = "testdata/file-left.yaml"
-	fileRight = "testdata/file-right.yaml"
+	"github.com/stretchr/testify/require"
 )
 
 var diffStringLines = []string{
@@ -22,54 +16,6 @@ var diffStringLines = []string{
 	"~ .city.name: New York -> San Francisco",
 	"~ .item.id: 124 -> 123",
 	"~ .item.price: 10.9 -> 10.3",
-}
-
-var diffValues = [][2]string{
-	{
-		"John", "Bob",
-	},
-	{
-		"Doe", "Rose",
-	},
-	{
-		"New York", "San Francisco",
-	},
-	{
-		"124", "123",
-	},
-	{
-		"10.9", "10.3",
-	},
-}
-
-func TestCompareFile(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight)
-	assert.NoError(t, err)
-	assert.Len(t, diffs, 1)
-	assert.Len(t, diffs[0], 5)
-
-	for i, diff := range diffs[0] {
-		assert.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
-		assert.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
-	}
-}
-
-func TestCompare(t *testing.T) {
-	diffs, err := Compare(readFile(t, fileLeft), readFile(t, fileRight))
-	assert.NoError(t, err)
-	assert.Len(t, diffs, 1)
-	assert.Len(t, diffs[0], 5)
-
-	for i, diff := range diffs[0] {
-		assert.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
-		assert.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
-	}
-}
-
-func TestFileDiffsHasDiff(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight)
-	assert.NoError(t, err)
-	assert.True(t, diffs.HasDiff())
 }
 
 func TestDiffsArray(t *testing.T) {
@@ -127,18 +73,18 @@ func TestDiffsArray(t *testing.T) {
 
 	compareIntegerDiff := func(t *testing.T, diff *Diff, expected [2]int) {
 		if diff.leftNode == nil {
-			assert.EqualValues(t, 0, expected[0])
+			require.EqualValues(t, 0, expected[0])
 		} else {
 			intNode := diff.leftNode.(*ast.IntegerNode)
 			value := intNode.Value.(uint64)
-			assert.EqualValues(t, value, expected[0])
+			require.EqualValues(t, value, expected[0])
 		}
 		if diff.rightNode == nil {
-			assert.EqualValues(t, 0, expected[1])
+			require.EqualValues(t, 0, expected[1])
 		} else {
 			intNode := diff.rightNode.(*ast.IntegerNode)
 			value := intNode.Value.(uint64)
-			assert.EqualValues(t, value, expected[1])
+			require.EqualValues(t, value, expected[1])
 		}
 	}
 
@@ -147,11 +93,11 @@ func TestDiffsArray(t *testing.T) {
 		rightYaml := toYaml(t, arrayYamlDiff.right)
 
 		fileDiffs, err := Compare(leftYaml, rightYaml)
-		assert.NoError(t, err)
-		assert.Len(t, fileDiffs, 1)
+		require.NoError(t, err)
+		require.Len(t, fileDiffs, 1)
 
 		docDiffs := fileDiffs[0]
-		assert.Len(t, docDiffs, len(arrayYamlDiff.expectedDiffs))
+		require.Len(t, docDiffs, len(arrayYamlDiff.expectedDiffs))
 
 		for i, diff := range docDiffs {
 			expectedDiff := arrayYamlDiff.expectedDiffs[i]
@@ -164,11 +110,11 @@ func TestDiffsArray(t *testing.T) {
 			leftYaml := toYaml(t, arrayYamlDiff.left)
 			rightYaml := toYaml(t, arrayYamlDiff.right)
 			fileDiffs, err := Compare(leftYaml, rightYaml, IgnoreSeqOrder)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.Len(t, fileDiffs, 1)
+			require.Len(t, fileDiffs, 1)
 			docDiffs := fileDiffs[0]
-			assert.Len(t, docDiffs, len(arrayYamlDiff.expectedDiffsIgnoreIndex))
+			require.Len(t, docDiffs, len(arrayYamlDiff.expectedDiffsIgnoreIndex))
 
 			for i, diff := range docDiffs {
 				expectedDiff := arrayYamlDiff.expectedDiffsIgnoreIndex[i]
@@ -180,43 +126,11 @@ func TestDiffsArray(t *testing.T) {
 
 func TestFormat(t *testing.T) {
 	diffs, err := CompareFile(fileLeft, fileRight)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	output := diffs.Format(Plain)
 
-	assert.Equal(t, output, strings.Join(diffStringLines, "\n"))
-}
-
-func ExampleCompare() {
-	left := []byte(`
-name: Alice
-city: New York
-items:
-    - one
-    - two
-`)
-
-	right := []byte(`
-name: Bob
-value: 990
-items:
-    - one
-    - three
-`)
-
-	diffs, err := Compare(left, right)
-	if err != nil {
-		panic(err)
-	}
-
-	output := diffs.Format(Plain)
-	fmt.Println(output)
-
-	// Output:
-	// ~ .name: Alice -> Bob
-	// - .city: New York
-	// + .value: 990
-	// ~ .items[1]: two -> three
+	require.Equal(t, output, strings.Join(diffStringLines, "\n"))
 }
 
 func toYaml(t *testing.T, a any) []byte {
