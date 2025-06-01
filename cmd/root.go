@@ -71,7 +71,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", diffs.Format(opts.formatOptions()...))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", diffs.Format(opts.formatOptions()...))
 
 	if opts.exitOnDifference && diffs.HasDiff() {
 		return errors.New("differences found between yaml files")
