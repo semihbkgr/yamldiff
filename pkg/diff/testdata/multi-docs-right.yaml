@@ -1,0 +1,68 @@
+---
+$id: "user.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: User
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  email:
+    type: string
+  role:
+    type: string
+    enum:
+      - admin
+      - viewer
+      - editor
+    description: "The role of the user in the system, defining their permissions"
+required:
+  - id
+  - name
+  - email
+  - role
+---
+$id: "product.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Product
+type: object
+properties:
+  sku:
+    description: Stock Keeping Unit
+    type: string
+  name:
+    type: string
+    maxLength: 64
+  price:
+    type: number
+  description:
+    type: string
+    maxLength: 512
+    description: "A brief description of the product"
+required:
+  - sku
+  - name
+  - price
+---
+$id: "order.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Order
+type: object
+properties:
+  order_id:
+    type: string
+  user:
+    $ref: "user.schema.yaml"
+  items:
+    type: array
+    items:
+      $ref: "product.schema.yaml"
+  created_at:
+    type: string
+    format: date-time
+    description: "The time when the order was created"
+required:
+  - order_id
+  - user
+  - items

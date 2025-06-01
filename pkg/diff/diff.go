@@ -8,9 +8,36 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+type DiffType int
+
+const (
+	Added DiffType = iota
+	Deleted
+	Modified
+)
+
 type Diff struct {
 	leftNode  ast.Node
 	rightNode ast.Node
+}
+
+func (d *Diff) Type() DiffType {
+	if d.leftNode == nil {
+		return Added
+	}
+	if d.rightNode == nil {
+		return Deleted
+	}
+	return Modified
+}
+
+func (d *Diff) Path() string {
+	switch d.Type() {
+	case Added:
+		return nodePathString(d.rightNode)
+	default:
+		return nodePathString(d.leftNode)
+	}
 }
 
 // todo: refactor this function
