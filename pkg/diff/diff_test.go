@@ -163,7 +163,7 @@ func TestDiffsArray(t *testing.T) {
 		for _, arrayYamlDiff := range arrayYamlDiffs {
 			leftYaml := toYaml(t, arrayYamlDiff.left)
 			rightYaml := toYaml(t, arrayYamlDiff.right)
-			fileDiffs, err := Compare(leftYaml, rightYaml, IgnoreSeqOrder())
+			fileDiffs, err := Compare(leftYaml, rightYaml, IgnoreSeqOrder)
 			assert.NoError(t, err)
 
 			assert.Len(t, fileDiffs, 1)
@@ -182,11 +182,7 @@ func TestFormat(t *testing.T) {
 	diffs, err := CompareFile(fileLeft, fileRight)
 	assert.NoError(t, err)
 
-	output := diffs.Format(FormatOptions{
-		Plain:    true,
-		Silent:   false,
-		Metadata: false,
-	})
+	output := diffs.Format(Plain)
 
 	assert.Equal(t, output, strings.Join(diffStringLines, "\n"))
 }
@@ -213,11 +209,7 @@ items:
 		panic(err)
 	}
 
-	output := diffs.Format(FormatOptions{
-		Plain:    true,
-		Silent:   false,
-		Metadata: false,
-	})
+	output := diffs.Format(Plain)
 	fmt.Println(output)
 
 	// Output:

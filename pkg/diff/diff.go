@@ -14,7 +14,12 @@ type Diff struct {
 }
 
 // todo: refactor this function
-func (d *Diff) Format(opts FormatOptions) string {
+func (d *Diff) Format(opts ...FormatOption) string {
+	options := &formatOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	var b strings.Builder
 	if d.leftNode == nil { // Added
 		sign := "+"
@@ -28,7 +33,7 @@ func (d *Diff) Format(opts FormatOptions) string {
 		value, _ := nodeValueString(d.rightNode, indent, newLine)
 		metadata := nodeMetadata(d.rightNode)
 
-		if !opts.Plain {
+		if !options.plain {
 			sign = color.HiGreenString(sign)
 			if path != "" {
 				path = color.HiGreenString(path)
@@ -37,17 +42,17 @@ func (d *Diff) Format(opts FormatOptions) string {
 			metadata = color.HiWhiteString(metadata)
 		}
 
-		if opts.Silent {
+		if options.silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else {
 			if path == "" {
-				if opts.Metadata {
+				if options.metadata {
 					b.WriteString(fmt.Sprintf("%s %s %s", sign, metadata, value))
 				} else {
 					b.WriteString(fmt.Sprintf("%s %s", sign, value))
 				}
 			} else {
-				if opts.Metadata {
+				if options.metadata {
 					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
 				} else {
 					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
@@ -67,7 +72,7 @@ func (d *Diff) Format(opts FormatOptions) string {
 		value, _ := nodeValueString(d.leftNode, indent, newLine)
 		metadata := nodeMetadata(d.leftNode)
 
-		if !opts.Plain {
+		if !options.plain {
 			sign = color.HiRedString(sign)
 			if path != "" {
 				path = color.HiRedString(path)
@@ -76,17 +81,17 @@ func (d *Diff) Format(opts FormatOptions) string {
 			metadata = color.HiWhiteString(metadata)
 		}
 
-		if opts.Silent {
+		if options.silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else {
 			if path == "" {
-				if opts.Metadata {
+				if options.metadata {
 					b.WriteString(fmt.Sprintf("%s %s %s", sign, metadata, value))
 				} else {
 					b.WriteString(fmt.Sprintf("%s %s", sign, value))
 				}
 			} else {
-				if opts.Metadata {
+				if options.metadata {
 					b.WriteString(fmt.Sprintf("%s %s: %s %s", sign, path, metadata, value))
 				} else {
 					b.WriteString(fmt.Sprintf("%s %s: %s", sign, path, value))
@@ -132,7 +137,7 @@ func (d *Diff) Format(opts FormatOptions) string {
 			}
 		}
 
-		if !opts.Plain {
+		if !options.plain {
 			sign = color.HiYellowString(sign)
 			if path != "" {
 				path = color.HiYellowString(path)
@@ -143,16 +148,16 @@ func (d *Diff) Format(opts FormatOptions) string {
 			rightMetadata = color.HiWhiteString(rightMetadata)
 		}
 
-		if opts.Silent {
+		if options.silent {
 			b.WriteString(fmt.Sprintf("%s %s", sign, path))
 		} else if path == "" {
-			if opts.Metadata {
+			if options.metadata {
 				b.WriteString(fmt.Sprintf("%s %s %s %s %s %s", sign, leftMetadata, leftValue, symbol, rightMetadata, rightValue))
 			} else {
 				b.WriteString(fmt.Sprintf("%s %s %s %s", sign, leftValue, symbol, rightValue))
 			}
 		} else {
-			if opts.Metadata {
+			if options.metadata {
 				b.WriteString(fmt.Sprintf("%s %s: %s %s %s %s %s", sign, path, leftMetadata, leftValue, symbol, rightMetadata, rightValue))
 			} else {
 				b.WriteString(fmt.Sprintf("%s %s: %s %s %s", sign, path, leftValue, symbol, rightValue))
@@ -198,20 +203,20 @@ func (a DocDiffs) Less(i, j int) bool {
 	return nodeA.GetToken().Position.Line < nodeB.GetToken().Position.Line
 }
 
-func (d DocDiffs) Format(opts FormatOptions) string {
+func (d DocDiffs) Format(opts ...FormatOption) string {
 	diffsStrings := make([]string, 0, len(d))
 	for _, diff := range d {
-		diffsStrings = append(diffsStrings, diff.Format(opts))
+		diffsStrings = append(diffsStrings, diff.Format(opts...))
 	}
 	return strings.Join(diffsStrings, "\n")
 }
 
 type FileDiffs []DocDiffs
 
-func (d FileDiffs) Format(opts FormatOptions) string {
+func (d FileDiffs) Format(opts ...FormatOption) string {
 	docDiffsStrings := make([]string, 0, len(d))
 	for _, docDiffs := range d {
-		docDiffsStrings = append(docDiffsStrings, docDiffs.Format(opts))
+		docDiffsStrings = append(docDiffsStrings, docDiffs.Format(opts...))
 	}
 	return strings.Join(docDiffsStrings, "\n---\n")
 }
@@ -220,20 +225,28 @@ func (d FileDiffs) HasDiff() bool {
 	return len(d) > 0
 }
 
-// FormatOptions specifies options for formatting the output of the comparison.
-type FormatOptions struct {
-	// Plain disables colored output when set to true.
-	Plain bool
+// formatOptions specifies options for formatting the output of the comparison.
+type formatOptions struct {
+	// plain disables colored output when set to true.
+	plain bool
 
-	// Silent suppresses the display of values when set to true.
-	Silent bool
+	// silent suppresses the display of values when set to true.
+	silent bool
 
-	// Metadata includes additional metadata, such as line numbers or types, when set to true.
-	Metadata bool
+	// metadata includes additional metadata, such as line numbers or types, when set to true.
+	metadata bool
 }
 
-var DefaultOutputOptions = FormatOptions{
-	Plain:    false,
-	Silent:   false,
-	Metadata: false,
+type FormatOption func(*formatOptions)
+
+func Plain(opts *formatOptions) {
+	opts.plain = true
+}
+
+func Silent(opts *formatOptions) {
+	opts.silent = true
+}
+
+func IncludeMetadata(opts *formatOptions) {
+	opts.metadata = true
 }

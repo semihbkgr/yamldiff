@@ -11,10 +11,8 @@ type CompareOption func(o *compareOptions)
 
 // IgnoreSeqOrder indicates whether to ignore the order of sequence items when comparing.
 // For example, the sequences [1, 2] and [2, 1] will be considered equal.
-func IgnoreSeqOrder() CompareOption {
-	return func(o *compareOptions) {
-		o.ignoreSeqOrder = true
-	}
+func IgnoreSeqOrder(o *compareOptions) {
+	o.ignoreSeqOrder = true
 }
 
 // Compare compares two yaml provided as bytes and returns the differences as FileDiffs,
