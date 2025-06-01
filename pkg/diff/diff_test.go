@@ -43,7 +43,7 @@ var diffValues = [][2]string{
 }
 
 func TestCompareFile(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
+	diffs, err := CompareFile(fileLeft, fileRight, DefaultCompareOptions)
 	assert.NoError(t, err)
 	assert.Len(t, diffs, 1)
 	assert.Len(t, diffs[0], 5)
@@ -55,7 +55,7 @@ func TestCompareFile(t *testing.T) {
 }
 
 func TestCompare(t *testing.T) {
-	diffs, err := Compare(readFile(t, fileLeft), readFile(t, fileRight), false, DefaultDiffOptions)
+	diffs, err := Compare(readFile(t, fileLeft), readFile(t, fileRight), DefaultCompareOptions)
 	assert.NoError(t, err)
 	assert.Len(t, diffs, 1)
 	assert.Len(t, diffs[0], 5)
@@ -67,7 +67,7 @@ func TestCompare(t *testing.T) {
 }
 
 func TestFileDiffsHasDiff(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
+	diffs, err := CompareFile(fileLeft, fileRight, DefaultCompareOptions)
 	assert.NoError(t, err)
 	assert.True(t, diffs.HasDiff())
 }
@@ -146,7 +146,7 @@ func TestDiffsArray(t *testing.T) {
 		leftYaml := toYaml(t, arrayYamlDiff.left)
 		rightYaml := toYaml(t, arrayYamlDiff.right)
 
-		fileDiffs, err := Compare(leftYaml, rightYaml, false, DefaultDiffOptions)
+		fileDiffs, err := Compare(leftYaml, rightYaml, DefaultCompareOptions)
 		assert.NoError(t, err)
 		assert.Len(t, fileDiffs, 1)
 
@@ -163,7 +163,7 @@ func TestDiffsArray(t *testing.T) {
 		for _, arrayYamlDiff := range arrayYamlDiffs {
 			leftYaml := toYaml(t, arrayYamlDiff.left)
 			rightYaml := toYaml(t, arrayYamlDiff.right)
-			fileDiffs, err := Compare(leftYaml, rightYaml, false, DiffOptions{IgnoreSeqOrder: true})
+			fileDiffs, err := Compare(leftYaml, rightYaml, CompareOptions{IgnoreSeqOrder: true})
 			assert.NoError(t, err)
 
 			assert.Len(t, fileDiffs, 1)
@@ -179,7 +179,7 @@ func TestDiffsArray(t *testing.T) {
 }
 
 func TestFormat(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight, false, DefaultDiffOptions)
+	diffs, err := CompareFile(fileLeft, fileRight, DefaultCompareOptions)
 	assert.NoError(t, err)
 
 	output := diffs.Format(FormatOptions{
@@ -208,7 +208,7 @@ items:
     - three
 `)
 
-	diffs, err := Compare(left, right, false, DefaultDiffOptions)
+	diffs, err := Compare(left, right, DefaultCompareOptions)
 	if err != nil {
 		panic(err)
 	}

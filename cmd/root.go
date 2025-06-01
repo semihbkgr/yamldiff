@@ -29,7 +29,7 @@ func Execute() {
 
 var exitOnDifference = false
 var enableComments = false
-var diffOptions = diff.DefaultDiffOptions
+var diffOptions = diff.DefaultCompareOptions
 var formatOptions = diff.DefaultOutputOptions
 
 func run(cmd *cobra.Command, args []string) error {

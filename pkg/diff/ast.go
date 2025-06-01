@@ -4,7 +4,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
-func compareNodes(ln, rn ast.Node, opts DiffOptions) []*Diff {
+func compareNodes(ln, rn ast.Node, opts CompareOptions) []*Diff {
 	if ln == nil || rn == nil || ln.Type() != rn.Type() {
 		return []*Diff{
 			{
@@ -48,7 +48,7 @@ func compareNodes(ln, rn ast.Node, opts DiffOptions) []*Diff {
 	return nil
 }
 
-func compareMappingNodes(leftNode, rightNode *ast.MappingNode, opts DiffOptions) []*Diff {
+func compareMappingNodes(leftNode, rightNode *ast.MappingNode, opts CompareOptions) []*Diff {
 	leftKeyValueMap := mappingValueNodesIntoMap(leftNode)
 	rightKeyValueMap := mappingValueNodesIntoMap(rightNode)
 	keyDiffsMap := make(map[string][]*Diff)
@@ -101,7 +101,7 @@ func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNo
 	return keyValueMap
 }
 
-func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, opts DiffOptions) []*Diff {
+func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, opts CompareOptions) []*Diff {
 	diffs := make([]*Diff, 0)
 	l := max(len(leftNode.Values), len(rightNode.Values))
 	for i := 0; i < l; i++ {
@@ -122,7 +122,7 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, opts DiffOption
 	return diffs
 }
 
-func ignoreIndexes(diffs []*Diff, opts DiffOptions) []*Diff {
+func ignoreIndexes(diffs []*Diff, opts CompareOptions) []*Diff {
 	leftNodes := make([]ast.Node, len(diffs))
 	rightNodes := make([]ast.Node, len(diffs))
 	for i, diff := range diffs {

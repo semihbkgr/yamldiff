@@ -2,12 +2,10 @@ package diff
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
 )
 
 type Diff struct {
@@ -220,77 +218,6 @@ func (d FileDiffs) Format(opts FormatOptions) string {
 
 func (d FileDiffs) HasDiff() bool {
 	return len(d) > 0
-}
-
-// Compare compares two yaml files provided as bytes and returns the differences as FileDiffs,
-// or an error if there's an issue parsing the files.
-func Compare(left []byte, right []byte, comments bool, opts DiffOptions) (FileDiffs, error) {
-	var parserMode parser.Mode
-	if comments {
-		parserMode |= parser.ParseComments
-	}
-
-	leftAst, err := parser.ParseBytes(left, parserMode)
-	if err != nil {
-		return nil, err
-	}
-
-	rightAst, err := parser.ParseBytes(right, parserMode)
-	if err != nil {
-		return nil, err
-	}
-
-	return CompareAst(leftAst, rightAst, opts), nil
-}
-
-// CompareFile compares two yaml files specified by file paths and returns the differences as FileDiffs,
-// or an error if there's an issue reading or parsing the files.
-func CompareFile(leftFile string, rightFile string, comments bool, opts DiffOptions) (FileDiffs, error) {
-	var parserMode parser.Mode
-	if comments {
-		parserMode |= parser.ParseComments
-	}
-
-	leftAst, err := parser.ParseFile(leftFile, parserMode)
-	if err != nil {
-		return nil, err
-	}
-
-	rightAst, err := parser.ParseFile(rightFile, parserMode)
-	if err != nil {
-		return nil, err
-	}
-
-	return CompareAst(leftAst, rightAst, opts), nil
-}
-
-// CompareAst compares two yaml documents represented as ASTs and returns the differences as FileDiffs.
-func CompareAst(left *ast.File, right *ast.File, opts DiffOptions) FileDiffs {
-	var docDiffs = make(FileDiffs, max(len(left.Docs), len(left.Docs)))
-	for i := 0; i < len(docDiffs); i++ {
-		var l, r ast.Node
-		if len(left.Docs) > i {
-			l = left.Docs[i].Body
-		}
-		if len(right.Docs) > i {
-			r = right.Docs[i].Body
-		}
-		docDiff := DocDiffs(compareNodes(l, r, opts))
-		sort.Sort(docDiff)
-		docDiffs[i] = docDiff
-	}
-	return docDiffs
-}
-
-// DiffOptions specifies options for customizing the behavior of the comparison.
-type DiffOptions struct {
-	// IgnoreSeqOrder, when true, treats arrays as equal regardless of the order of their items.
-	// For instance, the arrays [1, 2] and [2, 1] will be considered equal.
-	IgnoreSeqOrder bool
-}
-
-var DefaultDiffOptions = DiffOptions{
-	IgnoreSeqOrder: false,
 }
 
 // FormatOptions specifies options for formatting the output of the comparison.
