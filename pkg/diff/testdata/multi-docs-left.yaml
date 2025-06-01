@@ -1,0 +1,54 @@
+---
+$id: "user.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: User
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  email:
+    type: string
+required:
+  - id
+  - name
+---
+$id: "product.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Product
+type: object
+properties:
+  sku:
+    description: Stock Keeping Unit
+    type: string
+  name:
+    type: string
+    maxLength: 32
+  price:
+    type: number
+required:
+  - sku
+  - name
+  - price
+---
+$id: "order.schema.yaml"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: Order
+type: object
+properties:
+  order_id:
+    type: string
+  user:
+    $ref: "user.schema.yaml"
+  items:
+    type: array
+    items:
+      $ref: "product.schema.yaml"
+  timestamp:
+    type: number
+    description: "The unix timestamp of when the order was placed"
+required:
+  - order_id
+  - user
+  - items

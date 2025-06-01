@@ -2,6 +2,7 @@ package diff
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -10,71 +11,154 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	fileLeft  = "testdata/file-left.yaml"
-	fileRight = "testdata/file-right.yaml"
-)
+var testFilesDiffPaths = []string{
+	".global.scrape_interval",
+	".global.scrape_timeout",
+	".rule_files[2]",
+	".scrape_configs[0].static_configs[0].targets[1]",
+	".scrape_configs[1].static_configs[0].labels",
+	".scrape_configs[1].static_configs[1]",
+	".scrape_configs[2]",
+}
 
-var diffValues = [][2]string{
+var testFilesPathDiffTypes = map[string]DiffType{
+	".global.scrape_interval":                         Modified,
+	".global.scrape_timeout":                          Added,
+	".rule_files[2]":                                  Added,
+	".scrape_configs[0].static_configs[0].targets[1]": Added,
+	".scrape_configs[1].static_configs[0].labels":     Deleted,
+	".scrape_configs[1].static_configs[1]":            Deleted,
+	".scrape_configs[2]":                              Added,
+}
+
+var testMultiDocsFilesDiffPath = [][]string{
 	{
-		"John", "Bob",
+		".properties.role",
+		".required[2]",
+		".required[3]",
 	},
 	{
-		"Doe", "Rose",
+		".properties.name.maxLength",
+		".properties.description",
 	},
 	{
-		"New York", "San Francisco",
+		".properties.timestamp",
+		".properties.created_at",
+	},
+}
+
+var testMultiDocsFilesPathDiffTypes = []map[string]DiffType{
+	{
+		".properties.role": Added,
+		".required[2]":     Added,
+		".required[3]":     Added,
 	},
 	{
-		"124", "123",
+		".properties.name.maxLength": Modified,
+		".properties.description":    Added,
 	},
 	{
-		"10.9", "10.3",
+		".properties.timestamp":  Deleted,
+		".properties.created_at": Added,
 	},
 }
 
 func TestCompare(t *testing.T) {
-	diffs, err := Compare(readFile(t, fileLeft), readFile(t, fileRight))
+	left := readFile(t, "testdata/left.yaml")
+	right := readFile(t, "testdata/right.yaml")
+
+	diffs, err := Compare(left, right)
 	require.NoError(t, err)
 	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], 5)
+	require.Len(t, diffs[0], len(testFilesDiffPaths))
 
 	for i, diff := range diffs[0] {
-		require.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
-		require.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
+		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
+		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
+	}
+}
+
+func TestCompareMultiDocs(t *testing.T) {
+	left := readFile(t, "testdata/multi-docs-left.yaml")
+	right := readFile(t, "testdata/multi-docs-right.yaml")
+
+	diffs, err := Compare(left, right)
+	require.NoError(t, err)
+	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+
+	for i, docDiff := range diffs {
+		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
+
+		for j, diff := range docDiff {
+			require.Equal(t, diff.Path(), testMultiDocsFilesDiffPath[i][j])
+			require.Equal(t, diff.Type(), testMultiDocsFilesPathDiffTypes[i][diff.Path()])
+		}
 	}
 }
 
 func TestCompareFile(t *testing.T) {
-	diffs, err := CompareFile(fileLeft, fileRight)
+	diffs, err := CompareFile("testdata/left.yaml", "testdata/right.yaml")
 	require.NoError(t, err)
 	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], 5)
+	require.Len(t, diffs[0], len(testFilesDiffPaths))
 
 	for i, diff := range diffs[0] {
-		require.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
-		require.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
+		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
+		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
+	}
+}
+
+func TestCompareFileMultiDocs(t *testing.T) {
+	diffs, err := CompareFile("testdata/multi-docs-left.yaml", "testdata/multi-docs-right.yaml")
+	require.NoError(t, err)
+	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+
+	for i, docDiff := range diffs {
+		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
+
+		for j, diff := range docDiff {
+			require.Equal(t, diff.Path(), testMultiDocsFilesDiffPath[i][j])
+			require.Equal(t, diff.Type(), testMultiDocsFilesPathDiffTypes[i][diff.Path()])
+		}
 	}
 }
 
 func TestCompareAst(t *testing.T) {
-	leftAst, err := parser.ParseFile(fileLeft, 0)
+	leftAst, err := parser.ParseFile("testdata/left.yaml", 0)
 	require.NoError(t, err)
 
-	rightAst, err := parser.ParseFile(fileRight, 0)
+	rightAst, err := parser.ParseFile("testdata/right.yaml", 0)
 	require.NoError(t, err)
 
 	diffs := CompareAst(leftAst, rightAst)
 	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], 5)
+	require.Len(t, diffs[0], len(testFilesDiffPaths))
 
 	for i, diff := range diffs[0] {
-		require.Equal(t, diff.leftNode.GetToken().Value, diffValues[i][0])
-		require.Equal(t, diff.rightNode.GetToken().Value, diffValues[i][1])
+		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
+		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
 	}
 }
 
-//todo test multi doc yaml files
+func TestCompareAstMultiDocs(t *testing.T) {
+	leftAst, err := parser.ParseFile("testdata/multi-docs-left.yaml", 0)
+	require.NoError(t, err)
+
+	rightAst, err := parser.ParseFile("testdata/multi-docs-right.yaml", 0)
+	require.NoError(t, err)
+
+	diffs := CompareAst(leftAst, rightAst)
+	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+
+	for i, docDiff := range diffs {
+		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
+
+		for j, diff := range docDiff {
+			require.Equal(t, diff.Path(), testMultiDocsFilesDiffPath[i][j])
+			require.Equal(t, diff.Type(), testMultiDocsFilesPathDiffTypes[i][diff.Path()])
+		}
+	}
+}
 
 // empty yaml is evaluated as nil node in ast representation
 // see: https://github.com/goccy/go-yaml/issues/753
@@ -164,6 +248,65 @@ func TestCompareEmptyYaml(t *testing.T) {
 			diff := docDiffs[0]
 			require.Equal(t, diff.Type(), tt.expectedType)
 			require.Empty(t, diff.Path())
+		})
+	}
+}
+
+func TestCompareMultiDocsYaml(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs []map[string]DiffType
+	}{
+		{
+			name: "multi-docs with missing doc",
+			left: heredoc.Doc(`
+				foo: bar
+				---
+				baz: qux
+			`),
+			right: heredoc.Doc(`
+				foo: bar
+			`),
+			expectedDiffs: []map[string]DiffType{
+				{},
+				{
+					"": Deleted,
+				},
+			},
+		},
+	}
+
+	//todo: test additional multi-docs
+	//todo: test multiple missing multi-docs
+	//todo: test multiple additional multi-docs
+	//todo: test empty yaml in multi-docs
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := []byte(tt.left)
+			right := []byte(tt.right)
+
+			fileDiffs, err := Compare(left, right)
+			require.NoError(t, err)
+
+			require.Len(t, fileDiffs, len(tt.expectedDiffs))
+
+			for i, docDiffs := range fileDiffs {
+				expectedDiffs := tt.expectedDiffs[i]
+				diffPathTypeMap := make(map[string]DiffType)
+				for _, diff := range docDiffs {
+					diffPathTypeMap[diff.Path()] = diff.Type()
+				}
+
+				require.Len(t, docDiffs, len(expectedDiffs))
+				for path, diffType := range expectedDiffs {
+					actualDiffType, exists := diffPathTypeMap[path]
+					require.True(t, exists, "expected diff for path %s not found", path)
+					require.Equal(t, diffType, actualDiffType, "diff type mismatch for path %s", path)
+				}
+			}
 		})
 	}
 }
@@ -902,11 +1045,11 @@ func Test_compareNodesSequenceTypesIgnoreSeqOrder(t *testing.T) {
 	}
 }
 
-//todo func Test_compareNodesCollectionTypes(t *testing.T) {}
+//todo: func Test_compareNodesCollectionTypes(t *testing.T) {}
 
-// todo func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {}
+//todo: func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {}
 
-//todo Test_compareNodesNullNodes
+//todo: Test_compareNodesNullNodes(t *testing.T) {}
 
 func parseAstNode(t *testing.T, s string) ast.Node {
 	t.Helper()
@@ -914,4 +1057,11 @@ func parseAstNode(t *testing.T, s string) ast.Node {
 	require.NoError(t, err)
 	require.Len(t, node.Docs, 1)
 	return node.Docs[0].Body
+}
+
+func readFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err, "failed to read file %s", path)
+	return data
 }
