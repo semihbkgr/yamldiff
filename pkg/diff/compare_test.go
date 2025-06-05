@@ -126,11 +126,11 @@ func TestCompareFileMultiDocs(t *testing.T) {
 func TestCompareFileNotExist(t *testing.T) {
 	_, err := CompareFile("testdata/left.yaml", "testdata/not-exist.yaml")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no such file or directory")
+	require.True(t, os.IsNotExist(err), "Expected a file not exist error.")
 
 	_, err = CompareFile("testdata/not-exist.yaml", "testdata/right.yaml")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no such file or directory")
+	require.True(t, os.IsNotExist(err), "Expected a file not exist error.")
 }
 
 func TestCompareAst(t *testing.T) {
