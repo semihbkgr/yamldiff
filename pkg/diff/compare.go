@@ -75,6 +75,10 @@ type compareOptions struct {
 }
 
 func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
+	if ln == nil && rn == nil {
+		return nil
+	}
+
 	if ln == nil || rn == nil || ln.Type() != rn.Type() {
 		return []*Diff{
 			{
