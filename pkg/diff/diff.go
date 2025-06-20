@@ -16,9 +16,17 @@ const (
 	Modified
 )
 
+type DiffCount struct {
+	Added, Deleted, Modified int
+}
+
 type Diff struct {
 	leftNode  ast.Node
 	rightNode ast.Node
+}
+
+func (dc *DiffCount) String() string {
+	return fmt.Sprintf("%d added, %d deleted, %d modified\n", dc.Added, dc.Deleted, dc.Modified)
 }
 
 func (d *Diff) Type() DiffType {
@@ -41,7 +49,8 @@ func (d *Diff) Path() string {
 }
 
 // todo: refactor this function
-func (d *Diff) Format(opts ...FormatOption) string {
+func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
+	var diffType DiffType
 	options := &formatOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -49,6 +58,7 @@ func (d *Diff) Format(opts ...FormatOption) string {
 
 	var b strings.Builder
 	if d.leftNode == nil { // Added
+		diffType = Added
 		sign := "+"
 		path := nodePathString(d.rightNode)
 		indent := 4
@@ -88,6 +98,7 @@ func (d *Diff) Format(opts ...FormatOption) string {
 		}
 
 	} else if d.rightNode == nil { //Deleted
+		diffType = Deleted
 		sign := "-"
 		path := nodePathString(d.leftNode)
 		indent := 4
@@ -126,6 +137,7 @@ func (d *Diff) Format(opts ...FormatOption) string {
 			}
 		}
 	} else { //Modified
+		diffType = Modified
 		sign := "~"
 		path := nodePathString(d.leftNode)
 		indent := 4
@@ -191,7 +203,7 @@ func (d *Diff) Format(opts ...FormatOption) string {
 			}
 		}
 	}
-	return b.String()
+	return b.String(), diffType
 }
 
 type DocDiffs []*Diff
@@ -232,10 +244,20 @@ func (a DocDiffs) Less(i, j int) bool {
 
 func (d DocDiffs) Format(opts ...FormatOption) string {
 	diffsStrings := make([]string, 0, len(d))
+	var totalDiffs DiffCount
 	for _, diff := range d {
-		diffsStrings = append(diffsStrings, diff.Format(opts...))
+		diffStr, diffType := diff.Format(opts...)
+		switch diffType {
+		case 0:
+			totalDiffs.Added += 1
+		case 1:
+			totalDiffs.Deleted += 1
+		default:
+			totalDiffs.Modified += 1
+		}
+		diffsStrings = append(diffsStrings, diffStr)
 	}
-	return strings.Join(diffsStrings, "\n")
+	return totalDiffs.String() + strings.Join(diffsStrings, "\n")
 }
 
 type FileDiffs []DocDiffs
