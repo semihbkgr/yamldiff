@@ -49,8 +49,7 @@ func (d *Diff) Path() string {
 }
 
 // todo: refactor this function
-func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
-	var diffType DiffType
+func (d *Diff) Format(opts ...FormatOption) string {
 	options := &formatOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -58,7 +57,6 @@ func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
 
 	var b strings.Builder
 	if d.leftNode == nil { // Added
-		diffType = Added
 		sign := "+"
 		path := nodePathString(d.rightNode)
 		indent := 4
@@ -98,7 +96,6 @@ func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
 		}
 
 	} else if d.rightNode == nil { //Deleted
-		diffType = Deleted
 		sign := "-"
 		path := nodePathString(d.leftNode)
 		indent := 4
@@ -137,7 +134,6 @@ func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
 			}
 		}
 	} else { //Modified
-		diffType = Modified
 		sign := "~"
 		path := nodePathString(d.leftNode)
 		indent := 4
@@ -203,7 +199,7 @@ func (d *Diff) Format(opts ...FormatOption) (string, DiffType) {
 			}
 		}
 	}
-	return b.String(), diffType
+	return b.String()
 }
 
 type DocDiffs []*Diff
@@ -246,8 +242,8 @@ func (d DocDiffs) Format(opts ...FormatOption) string {
 	diffsStrings := make([]string, 0, len(d))
 	var totalDiffs DiffCount
 	for _, diff := range d {
-		diffStr, diffType := diff.Format(opts...)
-		switch diffType {
+		diffStr := diff.Format(opts...)
+		switch diff.Type() {
 		case 0:
 			totalDiffs.Added += 1
 		case 1:
