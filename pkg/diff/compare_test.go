@@ -170,8 +170,86 @@ func TestCompareAstMultiDocs(t *testing.T) {
 	}
 }
 
-// empty yaml is evaluated as nil node in ast representation
-// see: https://github.com/goccy/go-yaml/issues/753
+func TestCompareAstMultiDocsUnmatchedDocumentNumber(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs []map[string]DiffType
+	}{
+		{
+			name: "left has more documents",
+			left: heredoc.Doc(`
+				foo: bar
+				---
+				baz: qux
+				---
+				quux: corge
+			`),
+			right: heredoc.Doc(`
+				foo: bar
+				---
+				baz: qux
+			`),
+			expectedDiffs: []map[string]DiffType{
+				{},
+				{},
+				{
+					"": Deleted,
+				},
+			},
+		},
+		{
+			name: "right has more documents",
+			left: heredoc.Doc(`
+				foo: bar
+				---
+				baz: qux
+			`),
+			right: heredoc.Doc(`
+				foo: bar
+				---
+				baz: qux
+				---
+				quux: corge
+			`),
+			expectedDiffs: []map[string]DiffType{
+				{},
+				{},
+				{
+					"": Added,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := parseAstFile(t, tt.left)
+			right := parseAstFile(t, tt.right)
+
+			fileDiffs := CompareAst(left, right)
+
+			require.Len(t, fileDiffs, len(tt.expectedDiffs))
+
+			for i, docDiffs := range fileDiffs {
+				expectedDiffs := tt.expectedDiffs[i]
+				diffPathTypeMap := make(map[string]DiffType)
+				for _, diff := range docDiffs {
+					diffPathTypeMap[diff.Path()] = diff.Type()
+				}
+
+				require.Len(t, docDiffs, len(expectedDiffs))
+				for path, diffType := range expectedDiffs {
+					actualDiffType, exists := diffPathTypeMap[path]
+					require.True(t, exists, "expected diff for path %s not found", path)
+					require.Equal(t, diffType, actualDiffType, "diff type mismatch for path %s", path)
+				}
+			}
+		})
+	}
+}
+
 func TestCompareEmptyYaml(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -1068,6 +1146,13 @@ func parseAstNode(t *testing.T, s string) ast.Node {
 	require.NoError(t, err)
 	require.Len(t, node.Docs, 1)
 	return node.Docs[0].Body
+}
+
+func parseAstFile(t *testing.T, s string) *ast.File {
+	t.Helper()
+	file, err := parser.ParseBytes([]byte(s), 0)
+	require.NoError(t, err)
+	return file
 }
 
 func readFile(t *testing.T, path string) []byte {
