@@ -54,7 +54,7 @@ func CompareAst(left *ast.File, right *ast.File, opts ...CompareOption) FileDiff
 		opt(options)
 	}
 
-	var docDiffs = make(FileDiffs, max(len(left.Docs), len(left.Docs)))
+	var docDiffs = make(FileDiffs, max(len(left.Docs), len(right.Docs)))
 	for i := 0; i < len(docDiffs); i++ {
 		var l, r ast.Node
 		if len(left.Docs) > i {
@@ -75,6 +75,14 @@ type compareOptions struct {
 }
 
 func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
+	// If both nodes are nil in the AST representation, return nil (no differences)
+	// A nil node is different than a node in null type in AST.
+	// The node is nil when:
+	// - the yaml document has no content
+	// - the yaml document does not exist (when comparing multiple documents)
+	// see:
+	// - https://github.com/semihbkgr/yamldiff/issues/26
+	// - https://github.com/goccy/go-yaml/issues/753
 	if ln == nil && rn == nil {
 		return nil
 	}
@@ -118,6 +126,8 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		if leftBoolNode.Value != rightBoolNode.Value {
 			return []*Diff{{leftNode: ln, rightNode: rn}}
 		}
+	case ast.NullType:
+		return nil
 	}
 	return nil
 }
