@@ -16,9 +16,17 @@ const (
 	Modified
 )
 
+type DiffCount struct {
+	Added, Deleted, Modified int
+}
+
 type Diff struct {
 	leftNode  ast.Node
 	rightNode ast.Node
+}
+
+func (dc *DiffCount) String() string {
+	return fmt.Sprintf("%d added, %d deleted, %d modified\n", dc.Added, dc.Deleted, dc.Modified)
 }
 
 func (d *Diff) Type() DiffType {
@@ -232,10 +240,20 @@ func (a DocDiffs) Less(i, j int) bool {
 
 func (d DocDiffs) Format(opts ...FormatOption) string {
 	diffsStrings := make([]string, 0, len(d))
+	var totalDiffs DiffCount
 	for _, diff := range d {
-		diffsStrings = append(diffsStrings, diff.Format(opts...))
+		diffStr := diff.Format(opts...)
+		switch diff.Type() {
+		case 0:
+			totalDiffs.Added += 1
+		case 1:
+			totalDiffs.Deleted += 1
+		default:
+			totalDiffs.Modified += 1
+		}
+		diffsStrings = append(diffsStrings, diffStr)
 	}
-	return strings.Join(diffsStrings, "\n")
+	return totalDiffs.String() + strings.Join(diffsStrings, "\n")
 }
 
 type FileDiffs []DocDiffs

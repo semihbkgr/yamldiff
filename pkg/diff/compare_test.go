@@ -347,6 +347,7 @@ items:
 	fmt.Println(output)
 
 	// Output:
+	// 1 added, 1 deleted, 2 modified
 	// ~ .name: Alice -> Bob
 	// - .city: New York
 	// + .age: 30
