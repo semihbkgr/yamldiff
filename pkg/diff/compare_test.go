@@ -1098,13 +1098,6 @@ func parseAstNode(t *testing.T, s string) ast.Node {
 	return node.Docs[0].Body
 }
 
-func parseAstFile(t *testing.T, s string) *ast.File {
-	t.Helper()
-	file, err := parser.ParseBytes([]byte(s), 0)
-	require.NoError(t, err)
-	return file
-}
-
 func readFile(t *testing.T, path string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(path)
