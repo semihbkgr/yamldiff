@@ -1138,7 +1138,65 @@ func Test_compareNodesSequenceTypesIgnoreSeqOrder(t *testing.T) {
 
 //todo: func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {}
 
-//todo: Test_compareNodesNullNodes(t *testing.T) {}
+func Test_compareNodesNilNodes(t *testing.T) {
+	tests := []struct {
+		name         string
+		left         ast.Node
+		right        ast.Node
+		expectedDiff bool
+		expectedType DiffType
+	}{
+		{
+			name:         "both nil",
+			left:         nil,
+			right:        nil,
+			expectedDiff: false,
+		},
+		{
+			name:         "left nil",
+			left:         nil,
+			right:        parseAstNode(t, "foo: bar"),
+			expectedDiff: true,
+			expectedType: Added,
+		},
+		{
+			name:         "right nil",
+			left:         parseAstNode(t, "foo: bar"),
+			right:        nil,
+			expectedDiff: true,
+			expectedType: Deleted,
+		},
+		{
+			name:         "nil and null",
+			left:         nil,
+			right:        parseAstNode(t, "null"),
+			expectedDiff: true,
+			expectedType: Added,
+		},
+		{
+			name:         "null and nil",
+			left:         parseAstNode(t, "null"),
+			right:        nil,
+			expectedDiff: true,
+			expectedType: Deleted,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diffs := compareNodes(tt.left, tt.right, &compareOptions{})
+
+			if tt.expectedDiff {
+				require.Len(t, diffs, 1)
+				diff := diffs[0]
+				require.Equal(t, diff.Type(), tt.expectedType)
+				require.Empty(t, diff.Path())
+			} else {
+				require.Empty(t, diffs)
+			}
+		})
+	}
+}
 
 func parseAstNode(t *testing.T, s string) ast.Node {
 	t.Helper()
