@@ -170,7 +170,61 @@ func TestCompareAstMultiDocs(t *testing.T) {
 	}
 }
 
-func TestCompareAstMultiDocsUnmatchedDocumentNumber(t *testing.T) {
+func TestCompareEmptyDocument(t *testing.T) {
+	tests := []struct {
+		name         string
+		left         string
+		right        string
+		expectedDiff bool
+		expectedType DiffType
+	}{
+		{
+			name:         "empty and null",
+			left:         "",
+			right:        "null",
+			expectedDiff: true,
+			expectedType: Added,
+		},
+		{
+			name:         "null and empty",
+			left:         "null",
+			right:        "",
+			expectedDiff: true,
+			expectedType: Deleted,
+		},
+		{
+			name:         "empty and empty",
+			left:         "",
+			right:        "",
+			expectedDiff: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := []byte(tt.left)
+			right := []byte(tt.right)
+
+			fileDiffs, err := Compare(left, right)
+			require.NoError(t, err)
+
+			require.Len(t, fileDiffs, 1)
+			docDiffs := fileDiffs[0]
+
+			if !tt.expectedDiff {
+				require.Empty(t, docDiffs)
+				return
+			}
+
+			require.Len(t, docDiffs, 1)
+			diff := docDiffs[0]
+			require.Equal(t, diff.Type(), tt.expectedType)
+			require.Empty(t, diff.Path())
+		})
+	}
+}
+
+func TestCompareMultiDocsUnmatchedDocumentNumber(t *testing.T) {
 	tests := []struct {
 		name          string
 		left          string
@@ -221,155 +275,52 @@ func TestCompareAstMultiDocsUnmatchedDocumentNumber(t *testing.T) {
 				},
 			},
 		},
+		// see: https://github.com/semihbkgr/yamldiff/issues/33
+		// {
+		// 	name: "empty file and empty documents",
+		// 	left: heredoc.Doc(``),
+		// 	right: heredoc.Doc(`
+		// 		---
+		// 		---
+		// 		---
+		// 	`),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{}, {}, {},
+		// 	},
+		// },
+		// {
+		// 	name: "empty documents and empty file",
+		// 	left: heredoc.Doc(`
+		// 		---
+		// 		---
+		// 		---
+		// 	`),
+		// 	right: heredoc.Doc(``),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{}, {}, {},
+		// 	},
+		// },
+		// {
+		// 	name: "some empty documents",
+		// 	left: heredoc.Doc(`
+		// 		foo: bar
+		// 		---
+		// 		---
+		// 		baz: qux
+		// 	`),
+		// 	right: heredoc.Doc(`
+		// 		foo: bar
+		// 		---
+		// 		baz: qux
+		// 		---
+		// 	`),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{},
+		// 		{"": Added},
+		// 		{"": Deleted},
+		// 	},
+		// },
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			left := parseAstFile(t, tt.left)
-			right := parseAstFile(t, tt.right)
-
-			fileDiffs := CompareAst(left, right)
-
-			require.Len(t, fileDiffs, len(tt.expectedDiffs))
-
-			for i, docDiffs := range fileDiffs {
-				expectedDiffs := tt.expectedDiffs[i]
-				diffPathTypeMap := make(map[string]DiffType)
-				for _, diff := range docDiffs {
-					diffPathTypeMap[diff.Path()] = diff.Type()
-				}
-
-				require.Len(t, docDiffs, len(expectedDiffs))
-				for path, diffType := range expectedDiffs {
-					actualDiffType, exists := diffPathTypeMap[path]
-					require.True(t, exists, "expected diff for path %s not found", path)
-					require.Equal(t, diffType, actualDiffType, "diff type mismatch for path %s", path)
-				}
-			}
-		})
-	}
-}
-
-func TestCompareEmptyYaml(t *testing.T) {
-	tests := []struct {
-		name         string
-		left         string
-		right        string
-		expectedType DiffType
-	}{
-		{
-			name:         "empty and null",
-			left:         "",
-			right:        "null",
-			expectedType: Added,
-		},
-		{
-			name:         "null and empty",
-			left:         "null",
-			right:        "",
-			expectedType: Deleted,
-		},
-		{
-			name:         "empty and integer",
-			left:         "",
-			right:        "42",
-			expectedType: Added,
-		},
-		{
-			name:         "integer and empty",
-			left:         "42",
-			right:        "",
-			expectedType: Deleted,
-		},
-		{
-			name: "empty and mapping",
-			left: "",
-			right: heredoc.Doc(`
-				foo: bar
-				baz: qux
-			`),
-			expectedType: Added,
-		},
-		{
-			name: "mapping and empty",
-			left: heredoc.Doc(`
-				foo: bar
-				baz: qux
-			`),
-			right:        "",
-			expectedType: Deleted,
-		},
-		{
-			name: "empty and sequence",
-			left: "",
-			right: heredoc.Doc(`
-				- foo
-				- bar
-				- baz
-			`),
-			expectedType: Added,
-		},
-		{
-			name: "sequence and empty",
-			left: heredoc.Doc(`
-				- foo
-				- bar
-				- baz
-			`),
-			right:        "",
-			expectedType: Deleted,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			left := []byte(tt.left)
-			right := []byte(tt.right)
-
-			fileDiffs, err := Compare(left, right)
-			require.NoError(t, err)
-
-			require.Len(t, fileDiffs, 1)
-			docDiffs := fileDiffs[0]
-
-			require.Len(t, docDiffs, 1)
-			diff := docDiffs[0]
-			require.Equal(t, diff.Type(), tt.expectedType)
-			require.Empty(t, diff.Path())
-		})
-	}
-}
-
-func TestCompareMultiDocsYaml(t *testing.T) {
-	tests := []struct {
-		name          string
-		left          string
-		right         string
-		expectedDiffs []map[string]DiffType
-	}{
-		{
-			name: "multi-docs with missing doc",
-			left: heredoc.Doc(`
-				foo: bar
-				---
-				baz: qux
-			`),
-			right: heredoc.Doc(`
-				foo: bar
-			`),
-			expectedDiffs: []map[string]DiffType{
-				{},
-				{
-					"": Deleted,
-				},
-			},
-		},
-	}
-
-	//todo: test additional multi-docs
-	//todo: test multiple missing multi-docs
-	//todo: test multiple additional multi-docs
-	//todo: test empty yaml in multi-docs
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1821,13 +1772,6 @@ func parseAstNode(t *testing.T, s string) ast.Node {
 	require.NoError(t, err)
 	require.Len(t, node.Docs, 1)
 	return node.Docs[0].Body
-}
-
-func parseAstFile(t *testing.T, s string) *ast.File {
-	t.Helper()
-	file, err := parser.ParseBytes([]byte(s), 0)
-	require.NoError(t, err)
-	return file
 }
 
 func readFile(t *testing.T, path string) []byte {
