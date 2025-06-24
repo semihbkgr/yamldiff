@@ -88,12 +88,7 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 	}
 
 	if ln == nil || rn == nil || ln.Type() != rn.Type() {
-		return []*Diff{
-			{
-				leftNode:  ln,
-				rightNode: rn,
-			},
-		}
+		return []*Diff{newDiff(ln, rn)}
 	}
 
 	//todo: handle all types
@@ -106,25 +101,25 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		leftStringNode := ln.(*ast.StringNode)
 		rightStringNode := rn.(*ast.StringNode)
 		if leftStringNode.Value != rightStringNode.Value {
-			return []*Diff{{leftNode: ln, rightNode: rn}}
+			return []*Diff{newDiff(ln, rn)}
 		}
 	case ast.IntegerType:
 		leftIntegerNode := ln.(*ast.IntegerNode)
 		rightIntegerNode := rn.(*ast.IntegerNode)
 		if leftIntegerNode.Value != rightIntegerNode.Value {
-			return []*Diff{{leftNode: ln, rightNode: rn}}
+			return []*Diff{newDiff(ln, rn)}
 		}
 	case ast.FloatType:
 		leftFloatNode := ln.(*ast.FloatNode)
 		rightFloatNode := rn.(*ast.FloatNode)
 		if leftFloatNode.Value != rightFloatNode.Value {
-			return []*Diff{{leftNode: ln, rightNode: rn}}
+			return []*Diff{newDiff(ln, rn)}
 		}
 	case ast.BoolType:
 		leftBoolNode := ln.(*ast.BoolNode)
 		rightBoolNode := rn.(*ast.BoolNode)
 		if leftBoolNode.Value != rightBoolNode.Value {
-			return []*Diff{{leftNode: ln, rightNode: rn}}
+			return []*Diff{newDiff(ln, rn)}
 		}
 	case ast.NullType:
 		return nil
@@ -147,7 +142,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 				node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
 				node.SetPath(path)
 			}
-			keyDiffsMap[k] = []*Diff{{leftNode: node, rightNode: nil}}
+			keyDiffsMap[k] = []*Diff{newDiff(node, nil)}
 			continue
 		}
 		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, options)
@@ -164,7 +159,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 			node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
 			node.SetPath(path)
 		}
-		keyDiffsMap[k] = []*Diff{{leftNode: nil, rightNode: node}}
+		keyDiffsMap[k] = []*Diff{newDiff(nil, node)}
 	}
 
 	allDiffs := make([]*Diff, 0)
@@ -237,7 +232,7 @@ func ignoreIndexes(diffs []*Diff, options *compareOptions) []*Diff {
 		if leftNode == nil && rightNode == nil {
 			continue
 		}
-		resultDiffs = append(resultDiffs, &Diff{leftNode, rightNode})
+		resultDiffs = append(resultDiffs, newDiff(leftNode, rightNode))
 	}
 
 	return resultDiffs
