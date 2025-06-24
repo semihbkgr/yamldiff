@@ -1134,11 +1134,686 @@ func Test_compareNodesSequenceTypesIgnoreSeqOrder(t *testing.T) {
 	}
 }
 
-//todo: func Test_compareNodesCollectionTypes(t *testing.T) {}
+func Test_compareNodesCollectionTypes(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs map[string]DiffType
+	}{
+		{
+			name: "mapping with sequence values - same",
+			left: heredoc.Doc(`
+				items:
+				  - foo
+				  - bar
+				tags:
+				  - alpha
+				  - beta
+			`),
+			right: heredoc.Doc(`
+				items:
+				  - foo
+				  - bar
+				tags:
+				  - alpha
+				  - beta
+			`),
+			expectedDiffs: nil,
+		},
+		{
+			name: "mapping with sequence values - modified sequence",
+			left: heredoc.Doc(`
+				items:
+				  - foo
+				  - bar
+				tags:
+				  - alpha
+				  - beta
+			`),
+			right: heredoc.Doc(`
+				items:
+				  - foo
+				  - baz
+				tags:
+				  - alpha
+				  - gamma
+			`),
+			expectedDiffs: map[string]DiffType{
+				".items[1]": Modified,
+				".tags[1]":  Modified,
+			},
+		},
+		{
+			name: "mapping with sequence values - added/deleted elements",
+			left: heredoc.Doc(`
+				items:
+				  - foo
+				  - bar
+				config:
+				  - setting1
+			`),
+			right: heredoc.Doc(`
+				items:
+				  - foo
+				  - bar
+				  - baz
+				config: []
+			`),
+			expectedDiffs: map[string]DiffType{
+				".items[2]":  Added,
+				".config[0]": Deleted,
+			},
+		},
+		{
+			name: "sequence of mappings - same",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			right: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			expectedDiffs: nil,
+		},
+		{
+			name: "sequence of mappings - modified mapping values",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			right: heredoc.Doc(`
+				- name: alice
+				  age: 31
+				- name: charlie
+				  age: 25
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0].age":  Modified,
+				"[1].name": Modified,
+			},
+		},
+		{
+			name: "sequence of mappings - added/deleted keys",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				  city: nyc
+				- name: bob
+			`),
+			right: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  email: bob@example.com
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0].city":  Deleted,
+				"[1].email": Added,
+			},
+		},
+		{
+			name: "nested mapping with sequences containing mappings",
+			left: heredoc.Doc(`
+				users:
+				  - name: alice
+				    roles:
+				      - admin
+				      - user
+				  - name: bob
+				    roles:
+				      - user
+				groups:
+				  admins:
+				    - alice
+			`),
+			right: heredoc.Doc(`
+				users:
+				  - name: alice
+				    roles:
+				      - admin
+				      - moderator
+				  - name: charlie
+				    roles:
+				      - user
+				groups:
+				  admins:
+				    - alice
+				    - charlie
+			`),
+			expectedDiffs: map[string]DiffType{
+				".users[0].roles[1]": Modified,
+				".users[1].name":     Modified,
+				".groups.admins[1]":  Added,
+			},
+		},
+		{
+			name: "complex nested structures - sequences in mappings in sequences",
+			left: heredoc.Doc(`
+				- config:
+				    settings:
+				      - debug: true
+				        level: info
+				      - debug: false
+				        level: warn
+				  metadata:
+				    version: 1.0
+				- config:
+				    settings:
+				      - debug: true
+				        level: error
+			`),
+			right: heredoc.Doc(`
+				- config:
+				    settings:
+				      - debug: false
+				        level: info
+				      - debug: false
+				        level: warn
+				        timeout: 30
+				  metadata:
+				    version: 1.1
+				    author: admin
+				- config:
+				    settings:
+				      - debug: true
+				        level: error
+				    features:
+				      - logging
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0].config.settings[0].debug":   Modified,
+				"[0].config.settings[1].timeout": Added,
+				"[0].metadata.version":           Modified,
+				"[0].metadata.author":            Added,
+				"[1].config.features":            Added,
+			},
+		},
+		{
+			name: "mapping to sequence type change",
+			left: heredoc.Doc(`
+				data:
+				  key1: value1
+				  key2: value2
+			`),
+			right: heredoc.Doc(`
+				data:
+				  - value1
+				  - value2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".data": Modified,
+			},
+		},
+		{
+			name: "sequence to mapping type change",
+			left: heredoc.Doc(`
+				items:
+				  - first
+				  - second
+			`),
+			right: heredoc.Doc(`
+				items:
+				  first: 1
+				  second: 2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".items": Modified,
+			},
+		},
+		{
+			name: "empty collections",
+			left: heredoc.Doc(`
+				empty_map: {}
+				empty_list: []
+			`),
+			right: heredoc.Doc(`
+				empty_map: {}
+				empty_list: []
+			`),
+			expectedDiffs: nil,
+		},
+		{
+			name: "empty to populated collections",
+			left: heredoc.Doc(`
+				data: {}
+				items: []
+			`),
+			right: heredoc.Doc(`
+				data:
+				  key: value
+				items:
+				  - item1
+			`),
+			expectedDiffs: map[string]DiffType{
+				".data.key": Added,
+				".items[0]": Added,
+			},
+		},
+		{
+			name: "mixed collection operations",
+			left: heredoc.Doc(`
+				config:
+				  servers:
+				    - name: server1
+				      ports: [80, 443]
+				    - name: server2
+				      ports: [8080]
+				  defaults:
+				    timeout: 30
+			`),
+			right: heredoc.Doc(`
+				config:
+				  servers:
+				    - name: server1
+				      ports: [80, 443, 8443]
+				      ssl: true
+				  defaults:
+				    timeout: 60
+				    retries: 3
+				  backup:
+				    - server3
+			`),
+			expectedDiffs: map[string]DiffType{
+				".config.servers[0].ports[2]": Added,
+				".config.servers[0].ssl":      Added,
+				".config.servers[1]":          Deleted,
+				".config.defaults.timeout":    Modified,
+				".config.defaults.retries":    Added,
+				".config.backup":              Added,
+			},
+		},
+	}
 
-//todo: func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := parseAstNode(t, tt.left)
+			right := parseAstNode(t, tt.right)
 
-//todo: Test_compareNodesNullNodes(t *testing.T) {}
+			diffs := compareNodes(left, right, &compareOptions{})
+
+			if len(tt.expectedDiffs) == 0 {
+				require.Empty(t, diffs)
+				return
+			}
+
+			diffPathTypeMap := make(map[string]DiffType)
+			for _, diff := range diffs {
+				diffPathTypeMap[diff.Path()] = diff.Type()
+			}
+
+			require.Len(t, diffs, len(tt.expectedDiffs))
+			for path, diffType := range tt.expectedDiffs {
+				actualDiffType, exists := diffPathTypeMap[path]
+				require.True(t, exists, "expected diff for path %s not found", path)
+				require.Equal(t, diffType, actualDiffType, "diff type mismatch for path %s", path)
+			}
+		})
+	}
+}
+
+func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {
+	tests := []struct {
+		name         string
+		left         string
+		right        string
+		expectedType DiffType
+	}{
+		// String to collection types
+		{
+			name:         "string to mapping",
+			left:         heredoc.Doc(`"hello"`),
+			right:        "key: value",
+			expectedType: Modified,
+		},
+		{
+			name: "string to sequence",
+			left: heredoc.Doc(`"hello"`),
+			right: heredoc.Doc(`
+				- item1
+				- item2
+			`),
+			expectedType: Modified,
+		},
+		{
+			name:         "mapping to string",
+			left:         "key: value",
+			right:        heredoc.Doc(`"hello"`),
+			expectedType: Modified,
+		},
+		{
+			name: "sequence to string",
+			left: heredoc.Doc(`
+				- item1
+				- item2
+			`),
+			right:        heredoc.Doc(`"hello"`),
+			expectedType: Modified,
+		},
+
+		// Integer to collection types
+		{
+			name:         "integer to mapping",
+			left:         "42",
+			right:        "count: 42",
+			expectedType: Modified,
+		},
+		{
+			name: "integer to sequence",
+			left: "42",
+			right: heredoc.Doc(`
+				- 1
+				- 2
+				- 3
+			`),
+			expectedType: Modified,
+		},
+		{
+			name:         "mapping to integer",
+			left:         "count: 42",
+			right:        "42",
+			expectedType: Modified,
+		},
+		{
+			name: "sequence to integer",
+			left: heredoc.Doc(`
+				- 1
+				- 2
+				- 3
+			`),
+			right:        "42",
+			expectedType: Modified,
+		},
+
+		// Float to collection types
+		{
+			name:         "float to mapping",
+			left:         "3.14",
+			right:        "pi: 3.14",
+			expectedType: Modified,
+		},
+		{
+			name: "float to sequence",
+			left: "3.14",
+			right: heredoc.Doc(`
+				- 1.0
+				- 2.0
+				- 3.14
+			`),
+			expectedType: Modified,
+		},
+		{
+			name:         "mapping to float",
+			left:         "pi: 3.14",
+			right:        "3.14",
+			expectedType: Modified,
+		},
+		{
+			name: "sequence to float",
+			left: heredoc.Doc(`
+				- 1.0
+				- 2.0
+				- 3.14
+			`),
+			right:        "3.14",
+			expectedType: Modified,
+		},
+
+		// Boolean to collection types
+		{
+			name:         "boolean to mapping",
+			left:         "true",
+			right:        "enabled: true",
+			expectedType: Modified,
+		},
+		{
+			name: "boolean to sequence",
+			left: "false",
+			right: heredoc.Doc(`
+				- true
+				- false
+			`),
+			expectedType: Modified,
+		},
+		{
+			name:         "mapping to boolean",
+			left:         "enabled: true",
+			right:        "true",
+			expectedType: Modified,
+		},
+		{
+			name: "sequence to boolean",
+			left: heredoc.Doc(`
+				- true
+				- false
+			`),
+			right:        "false",
+			expectedType: Modified,
+		},
+
+		// Null to collection types
+		{
+			name:         "null to mapping",
+			left:         "null",
+			right:        "data: null",
+			expectedType: Modified,
+		},
+		{
+			name: "null to sequence",
+			left: "null",
+			right: heredoc.Doc(`
+				- null
+				- value
+			`),
+			expectedType: Modified,
+		},
+		{
+			name:         "mapping to null",
+			left:         "data: null",
+			right:        "null",
+			expectedType: Modified,
+		},
+		{
+			name: "sequence to null",
+			left: heredoc.Doc(`
+				- null
+				- value
+			`),
+			right:        "null",
+			expectedType: Modified,
+		},
+
+		// Empty collections to scalars
+		{
+			name:         "empty mapping to string",
+			left:         "{}",
+			right:        heredoc.Doc(`"empty"`),
+			expectedType: Modified,
+		},
+		{
+			name:         "empty sequence to string",
+			left:         "[]",
+			right:        heredoc.Doc(`"empty"`),
+			expectedType: Modified,
+		},
+		{
+			name:         "string to empty mapping",
+			left:         heredoc.Doc(`"empty"`),
+			right:        "{}",
+			expectedType: Modified,
+		},
+		{
+			name:         "string to empty sequence",
+			left:         heredoc.Doc(`"empty"`),
+			right:        "[]",
+			expectedType: Modified,
+		},
+
+		// Complex scenarios with nested structures
+		{
+			name: "complex mapping to scalar",
+			left: heredoc.Doc(`
+				config:
+				  database:
+				    host: localhost
+				    port: 5432
+				  cache:
+				    enabled: true
+			`),
+			right:        heredoc.Doc(`"configuration disabled"`),
+			expectedType: Modified,
+		},
+		{
+			name: "complex sequence to scalar",
+			left: heredoc.Doc(`
+				- name: server1
+				  config:
+				    host: localhost
+				- name: server2
+				  config:
+				    host: remote
+			`),
+			right:        "42",
+			expectedType: Modified,
+		},
+		{
+			name: "scalar to complex mapping",
+			left: heredoc.Doc(`"simple value"`),
+			right: heredoc.Doc(`
+				users:
+				  - alice
+				  - bob
+				settings:
+				  timeout: 30
+			`),
+			expectedType: Modified,
+		},
+		{
+			name: "scalar to complex sequence",
+			left: "false",
+			right: heredoc.Doc(`
+				- config:
+				    debug: true
+				- config:
+				    debug: false
+			`),
+			expectedType: Modified,
+		},
+
+		// Edge cases with special values
+		{
+			name:         "quoted number string to mapping",
+			left:         heredoc.Doc(`"123"`),
+			right:        "number: 123",
+			expectedType: Modified,
+		},
+		{
+			name: "quoted boolean string to sequence",
+			left: heredoc.Doc(`"true"`),
+			right: heredoc.Doc(`
+				- true
+				- false
+			`),
+			expectedType: Modified,
+		},
+		{
+			name: "multiline string to mapping",
+			left: heredoc.Doc(`
+				"line1
+				line2
+				line3"
+			`),
+			right: heredoc.Doc(`
+				lines:
+				  - line1
+				  - line2
+				  - line3
+			`),
+			expectedType: Modified,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := parseAstNode(t, tt.left)
+			right := parseAstNode(t, tt.right)
+
+			diffs := compareNodes(left, right, &compareOptions{})
+
+			require.Len(t, diffs, 1)
+			diff := diffs[0]
+			require.Equal(t, tt.expectedType, diff.Type())
+			require.Empty(t, diff.Path())
+		})
+	}
+}
+
+func Test_compareNodesNilNodes(t *testing.T) {
+	tests := []struct {
+		name         string
+		left         ast.Node
+		right        ast.Node
+		expectedDiff bool
+		expectedType DiffType
+	}{
+		{
+			name:         "both nil",
+			left:         nil,
+			right:        nil,
+			expectedDiff: false,
+		},
+		{
+			name:         "left nil",
+			left:         nil,
+			right:        parseAstNode(t, "foo: bar"),
+			expectedDiff: true,
+			expectedType: Added,
+		},
+		{
+			name:         "right nil",
+			left:         parseAstNode(t, "foo: bar"),
+			right:        nil,
+			expectedDiff: true,
+			expectedType: Deleted,
+		},
+		{
+			name:         "nil and null",
+			left:         nil,
+			right:        parseAstNode(t, "null"),
+			expectedDiff: true,
+			expectedType: Added,
+		},
+		{
+			name:         "null and nil",
+			left:         parseAstNode(t, "null"),
+			right:        nil,
+			expectedDiff: true,
+			expectedType: Deleted,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diffs := compareNodes(tt.left, tt.right, &compareOptions{})
+
+			if tt.expectedDiff {
+				require.Len(t, diffs, 1)
+				diff := diffs[0]
+				require.Equal(t, diff.Type(), tt.expectedType)
+				require.Empty(t, diff.Path())
+			} else {
+				require.Empty(t, diffs)
+			}
+		})
+	}
+}
 
 func parseAstNode(t *testing.T, s string) ast.Node {
 	t.Helper()
