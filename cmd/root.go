@@ -124,7 +124,7 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 
 	output := diffs.Format(cfg.formatOptions()...)
 	if output != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", output)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", output)
 	}
 
 	if cfg.exitOnDifference && diffs.HasDiff() {
