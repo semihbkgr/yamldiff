@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	"github.com/mattn/go-isatty"
 	"github.com/semihbkgr/yamldiff/pkg/diff"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +15,7 @@ import (
 type config struct {
 	exitOnDifference bool
 	ignoreSeqOrder   bool
-	color            bool
+	color            string
 	pathsOnly        bool
 	metadata         bool
 	counts           bool
@@ -25,10 +26,24 @@ func newConfig() *config {
 	return &config{
 		exitOnDifference: false,
 		ignoreSeqOrder:   false,
-		color:            true, // color is enabled by default
+		color:            "auto",
 		pathsOnly:        false,
 		metadata:         false,
 		counts:           false,
+	}
+}
+
+// shouldUseColor determines if color output should be enabled
+func (c *config) shouldUseColor() bool {
+	switch c.color {
+	case "always":
+		return true
+	case "never":
+		return false
+	case "auto":
+		return isatty.IsTerminal(os.Stdout.Fd())
+	default:
+		return false // fallback for invalid values
 	}
 }
 
@@ -44,7 +59,7 @@ func (c *config) compareOptions() []diff.CompareOption {
 // formatOptions converts config to diff.FormatOption slice
 func (c *config) formatOptions() []diff.FormatOption {
 	var opts []diff.FormatOption
-	if !c.color {
+	if !c.shouldUseColor() {
 		opts = append(opts, diff.Plain)
 	}
 	if c.pathsOnly {
@@ -57,6 +72,16 @@ func (c *config) formatOptions() []diff.FormatOption {
 		opts = append(opts, diff.IncludeCounts)
 	}
 	return opts
+}
+
+// validateColorFlag validates the color flag value
+func (c *config) validateColorFlag() error {
+	switch c.color {
+	case "always", "never", "auto":
+		return nil
+	default:
+		return fmt.Errorf("invalid color value %q: must be one of 'always', 'never', or 'auto'", c.color)
+	}
 }
 
 // newRootCommand creates the root cobra command
@@ -78,7 +103,7 @@ func newRootCommand() *cobra.Command {
 	// Add flags
 	cmd.Flags().BoolVarP(&cfg.exitOnDifference, "exit-code", "e", cfg.exitOnDifference, "Exit with non-zero status code when differences are found")
 	cmd.Flags().BoolVarP(&cfg.ignoreSeqOrder, "ignore-order", "i", cfg.ignoreSeqOrder, "Ignore sequence order when comparing")
-	cmd.Flags().BoolVar(&cfg.color, "color", cfg.color, "Enable color on output")
+	cmd.Flags().StringVar(&cfg.color, "color", cfg.color, "When to use color output. It can be one of always, never, or auto.")
 	cmd.Flags().BoolVarP(&cfg.pathsOnly, "paths-only", "p", cfg.pathsOnly, "Show only paths of differences without displaying the values")
 	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include additional metadata such as line numbers and node types in the output")
 	cmd.Flags().BoolVarP(&cfg.counts, "counts", "c", cfg.counts, "Display a summary count of total added, deleted, and modified items")
@@ -88,6 +113,10 @@ func newRootCommand() *cobra.Command {
 
 // runCommand executes the main comparison logic
 func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
+	if err := cfg.validateColorFlag(); err != nil {
+		return err
+	}
+
 	diffs, err := diff.CompareFile(args[0], args[1], cfg.compareOptions()...)
 	if err != nil {
 		return fmt.Errorf("failed to compare files: %w", err)

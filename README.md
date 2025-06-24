@@ -20,14 +20,14 @@ Usage:
   yamldiff [flags] <file-left> <file-right>
 
 Flags:
-  -c, --comment     Include comments in the output when available.
-  -e, --exit        Exit with a non-zero status code if differences are found between yaml files.
-  -h, --help        help for yamldiff
-  -m, --metadata    Include additional metadata in the output (not applicable with the silent flag).
-  -p, --plain       Output without any color formatting.
-  -s, --silent      Suppress output of values, showing only differences.
-  -u, --unordered   Ignore the order of items in arrays during comparison.
-  -v, --version     version for yamldiff
+      --color string   When to use color output. It can be one of always, never, or auto. (default "auto")
+  -c, --counts         Display a summary count of total added, deleted, and modified items
+  -e, --exit-code      Exit with non-zero status code when differences are found
+  -h, --help           help for yamldiff
+  -i, --ignore-order   Ignore sequence order when comparing
+  -m, --metadata       Include additional metadata such as line numbers and node types in the output
+  -p, --paths-only     Show only paths of differences without displaying the values
+  -v, --version        version for yamldiff
 ```
 
 ## Example
