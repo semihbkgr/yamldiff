@@ -10,25 +10,25 @@ import (
 	"github.com/goccy/go-yaml/printer"
 )
 
-// formatOptions holds all formatting configuration (internal)
+// formatOptions holds all formatting configuration
 type formatOptions struct {
-	plain          bool // disables colored output
-	silent         bool // suppresses the display of values
-	metadata       bool // includes additional metadata
-	enableCounters bool // includes diff count summary
+	plain     bool // disables colored output
+	pathsOnly bool // suppresses the display of values
+	metadata  bool // includes additional metadata
+	counts    bool // includes diff count summary
 }
 
 // FormatOption is a function that modifies format options
 type FormatOption func(*formatOptions)
 
-// Plain disables colored output
+// Plain disables color output and formats values as plain text
 func Plain(opts *formatOptions) {
 	opts.plain = true
 }
 
-// Silent suppresses the display of values
-func Silent(opts *formatOptions) {
-	opts.silent = true
+// PathsOnly suppresses the display of values
+func PathsOnly(opts *formatOptions) {
+	opts.pathsOnly = true
 }
 
 // IncludeMetadata includes additional metadata in the output
@@ -36,43 +36,26 @@ func IncludeMetadata(opts *formatOptions) {
 	opts.metadata = true
 }
 
-// EnableCounters includes diff count summary in the output
-func EnableCounters(opts *formatOptions) {
-	opts.enableCounters = true
+// IncludeCounts includes diff count summary in the output
+func IncludeCounts(opts *formatOptions) {
+	opts.counts = true
 }
 
-// DisableCounters disables diff count summary in the output
-func DisableCounters(opts *formatOptions) {
-	opts.enableCounters = false
-}
-
-// DiffCount tracks the count of different types of diffs
-type DiffCount struct {
-	Added, Deleted, Modified int
-}
-
-// String returns a string representation of the diff count
-func (dc *DiffCount) String() string {
-	return fmt.Sprintf("%d added, %d deleted, %d modified\n", dc.Added, dc.Deleted, dc.Modified)
-}
-
-// formatter handles the formatting of diffs with consistent options (internal)
+// formatter handles the formatting of diffs
 type formatter struct {
 	options formatOptions
 }
 
-// newFormatter creates a new formatter with the given options (internal)
+// newFormatter creates a new formatter with the given options
 func newFormatter(opts ...FormatOption) *formatter {
-	options := formatOptions{
-		enableCounters: true, // Default to showing counters
-	}
+	var options formatOptions
 	for _, opt := range opts {
 		opt(&options)
 	}
 	return &formatter{options: options}
 }
 
-// FormatDiff formats a single diff (internal)
+// FormatDiff formats a single diff
 func (f *formatter) formatDiff(diff *Diff) string {
 	switch diff.Type() {
 	case Added:
@@ -85,7 +68,7 @@ func (f *formatter) formatDiff(diff *Diff) string {
 	return ""
 }
 
-// formatDocDiffs formats a collection of document diffs (internal)
+// formatDocDiffs formats a collection of document diffs
 func (f *formatter) formatDocDiffs(diffs DocDiffs) string {
 	diffStrings := make([]string, 0, len(diffs))
 	for _, diff := range diffs {
@@ -94,8 +77,7 @@ func (f *formatter) formatDocDiffs(diffs DocDiffs) string {
 
 	result := strings.Join(diffStrings, "\n")
 
-	// Apply counter option at DocDiffs level
-	if f.options.enableCounters {
+	if f.options.counts {
 		count := f.countDiffs(diffs)
 		result = count.String() + result
 	}
@@ -103,7 +85,7 @@ func (f *formatter) formatDocDiffs(diffs DocDiffs) string {
 	return result
 }
 
-// formatFileDiffs formats a collection of file diffs (internal)
+// formatFileDiffs formats a collection of file diffs
 func (f *formatter) formatFileDiffs(fileDiffs FileDiffs) string {
 	docDiffStrings := make([]string, 0, len(fileDiffs))
 	for _, docDiffs := range fileDiffs {
@@ -113,16 +95,16 @@ func (f *formatter) formatFileDiffs(fileDiffs FileDiffs) string {
 }
 
 // countDiffs counts the number of each type of diff
-func (f *formatter) countDiffs(diffs DocDiffs) DiffCount {
-	var count DiffCount
+func (f *formatter) countDiffs(diffs DocDiffs) diffCount {
+	var count diffCount
 	for _, diff := range diffs {
 		switch diff.Type() {
 		case Added:
-			count.Added++
+			count.added++
 		case Deleted:
-			count.Deleted++
+			count.deleted++
 		case Modified:
-			count.Modified++
+			count.modified++
 		}
 	}
 	return count
@@ -237,7 +219,7 @@ func (f *formatter) getModifiedSymbol(leftMultiLine, rightMultiLine bool, path s
 
 // buildOutput builds the output string for single-value diffs
 func (f *formatter) buildOutput(sign, path, value, metadata string) string {
-	if f.options.silent {
+	if f.options.pathsOnly {
 		return fmt.Sprintf("%s %s", sign, path)
 	}
 
@@ -256,7 +238,7 @@ func (f *formatter) buildOutput(sign, path, value, metadata string) string {
 
 // buildModifiedOutput builds the output string for modified diffs
 func (f *formatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbol, leftMetadata, rightMetadata string) string {
-	if f.options.silent {
+	if f.options.pathsOnly {
 		return fmt.Sprintf("%s %s", sign, path)
 	}
 
@@ -273,21 +255,31 @@ func (f *formatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbo
 	return fmt.Sprintf("%s %s: %s %s %s", sign, path, leftValue, symbol, rightValue)
 }
 
-// Node path and value extraction functions
+// diffCount tracks the count of different types of diffs
+type diffCount struct {
+	added    int
+	deleted  int
+	modified int
+}
 
-// getNodePath extracts the YAML path from a node, removing the leading dollar sign
+// String returns a string representation of the diff count
+func (dc *diffCount) String() string {
+	return fmt.Sprintf("%d added, %d deleted, %d modified\n", dc.added, dc.deleted, dc.modified)
+}
+
+// getNodePath extracts the YAML path from a node
 func getNodePath(node ast.Node) string {
 	if node == nil {
 		return ""
 	}
 	path := node.GetPath()
 	if len(path) > 0 && path[0] == '$' {
-		return path[1:]
+		return path[1:] // remove leading dollar sign
 	}
 	return path
 }
 
-// formatNodeValue formats a node's value with proper indentation and newlines
+// formatNodeValue formats a node's value with proper indentation
 func formatNodeValue(node ast.Node, indent int, startNewLine bool) (string, bool) {
 	if node == nil {
 		return "", false
@@ -337,7 +329,7 @@ func getNodeMetadata(node ast.Node) string {
 	return fmt.Sprintf("[line:%d <%s>]", node.GetToken().Position.Line, node.Type())
 }
 
-// calculateIndentLevel finds the indentation level of a string
+// calculateIndentLevel calculates the indentation level of a string
 func calculateIndentLevel(s string) int {
 	for i, char := range s {
 		if char != ' ' {
@@ -347,6 +339,7 @@ func calculateIndentLevel(s string) int {
 	return 0
 }
 
+// colorPrinter is a global printer instance configured with syntax highlighting
 var colorPrinter printer.Printer = initializeColorPrinter()
 
 // initializeColorPrinter creates a printer with syntax highlighting
