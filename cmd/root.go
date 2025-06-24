@@ -66,7 +66,7 @@ func (c *config) formatOptions() []diff.FormatOption {
 		opts = append(opts, diff.PathsOnly)
 	}
 	if c.metadata {
-		opts = append(opts, diff.IncludeMetadata)
+		opts = append(opts, diff.WithMetadata)
 	}
 	if c.counts {
 		opts = append(opts, diff.IncludeCounts)

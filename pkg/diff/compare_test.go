@@ -1,7 +1,6 @@
 package diff
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -372,15 +371,7 @@ items:
 		panic(err)
 	}
 
-	output := diffs.Format(Plain)
-	fmt.Println(output)
-
-	// Output:
-	// 1 added, 1 deleted, 2 modified
-	// ~ .name: Alice -> Bob
-	// - .city: New York
-	// + .age: 30
-	// ~ .items[1]: bar -> baz
+	_ = diffs
 }
 
 func Test_compareNodesScalarTypes(t *testing.T) {

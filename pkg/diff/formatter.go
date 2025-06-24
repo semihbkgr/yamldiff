@@ -31,8 +31,8 @@ func PathsOnly(opts *formatOptions) {
 	opts.pathsOnly = true
 }
 
-// IncludeMetadata includes additional metadata in the output
-func IncludeMetadata(opts *formatOptions) {
+// WithMetadata includes additional metadata in the output
+func WithMetadata(opts *formatOptions) {
 	opts.metadata = true
 }
 
