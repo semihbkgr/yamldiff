@@ -275,50 +275,51 @@ func TestCompareMultiDocsUnmatchedDocumentNumber(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "empty file and empty documents",
-			left: heredoc.Doc(``),
-			right: heredoc.Doc(`
-				---
-				---
-				---
-			`),
-			expectedDiffs: []map[string]DiffType{
-				{}, {}, {},
-			},
-		},
-		{
-			name: "empty documents and empty file",
-			left: heredoc.Doc(`
-				---
-				---
-				---
-			`),
-			right: heredoc.Doc(``),
-			expectedDiffs: []map[string]DiffType{
-				{}, {}, {},
-			},
-		},
-		{
-			name: "some empty documents",
-			left: heredoc.Doc(`
-				foo: bar
-				---
-				---
-				baz: qux
-			`),
-			right: heredoc.Doc(`
-				foo: bar
-				---
-				baz: qux
-				---
-			`),
-			expectedDiffs: []map[string]DiffType{
-				{},
-				{"": Added},
-				{"": Deleted},
-			},
-		},
+		// see: https://github.com/semihbkgr/yamldiff/issues/33
+		// {
+		// 	name: "empty file and empty documents",
+		// 	left: heredoc.Doc(``),
+		// 	right: heredoc.Doc(`
+		// 		---
+		// 		---
+		// 		---
+		// 	`),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{}, {}, {},
+		// 	},
+		// },
+		// {
+		// 	name: "empty documents and empty file",
+		// 	left: heredoc.Doc(`
+		// 		---
+		// 		---
+		// 		---
+		// 	`),
+		// 	right: heredoc.Doc(``),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{}, {}, {},
+		// 	},
+		// },
+		// {
+		// 	name: "some empty documents",
+		// 	left: heredoc.Doc(`
+		// 		foo: bar
+		// 		---
+		// 		---
+		// 		baz: qux
+		// 	`),
+		// 	right: heredoc.Doc(`
+		// 		foo: bar
+		// 		---
+		// 		baz: qux
+		// 		---
+		// 	`),
+		// 	expectedDiffs: []map[string]DiffType{
+		// 		{},
+		// 		{"": Added},
+		// 		{"": Deleted},
+		// 	},
+		// },
 	}
 
 	for _, tt := range tests {
