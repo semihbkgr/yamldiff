@@ -1401,6 +1401,602 @@ func Test_compareNodesCollectionTypes(t *testing.T) {
 	}
 }
 
+func Test_compareNodesNestedCollectionPath(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs map[string]DiffType
+	}{
+		{
+			name: "nested mapping with modified scalar values",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-1
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.five": Modified,
+			},
+		},
+		{
+			name: "nested mapping with added scalar value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-1
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-1
+				        six: value-2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.six": Added,
+			},
+		},
+		{
+			name: "nested mapping with deleted scalar value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-1
+				        six: value-2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        five: value-1
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.six": Deleted,
+			},
+		},
+		{
+			name: "nested mapping with modified scalar sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[1]": Modified,
+			},
+		},
+		{
+			name: "nested mapping with modified mapping sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value3
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[1].value": Modified,
+			},
+		},
+		{
+			name: "nested mapping with modified sequence value type from scalar to mapping",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[0]": Modified,
+				".one.two.three.four.items[1]": Modified,
+			},
+		},
+		{
+			name: "nested mapping with modified sequence value type from mapping to scalar",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[0]": Modified,
+				".one.two.three.four.items[1]": Modified,
+			},
+		},
+		{
+			name: "nested mapping with added scalar sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+				          - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[2]": Added,
+			},
+		},
+		{
+			name: "nested mapping with added mapping sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+				          - name: item3
+				            value: value3
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[2]": Added,
+			},
+		},
+		{
+			name: "nested mapping with deleted scalar sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+				          - item3
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - item1
+				          - item2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[2]": Deleted,
+			},
+		},
+		{
+			name: "nested mapping with deleted mapping sequence value",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+				          - name: item3
+				            value: value3
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        items:
+				          - name: item1
+				            value: value1
+				          - name: item2
+				            value: value2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.items[2]": Deleted,
+			},
+		},
+		{
+			name: "nested mapping with modified mapping field name",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        new-item:
+				          name: item1
+				          value: value1
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.item":     Deleted,
+				".one.two.three.four.new-item": Added,
+			},
+		},
+		{
+			name: "nested mapping with modified mapping field value type",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item: item1
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.item": Modified,
+			},
+		},
+		{
+			name: "nested mapping with added mapping field",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+				        new-item:
+				          name: item2
+				          value: value2
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.new-item": Added,
+			},
+		},
+		{
+			name: "nested mapping with deleted mapping field",
+			left: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+				        new-item:
+				          name: item2
+				          value: value2
+			`),
+			right: heredoc.Doc(`
+				one:
+				  two:
+				    three:
+				      four:
+				        item:
+				          name: item1
+				          value: value1
+			`),
+			expectedDiffs: map[string]DiffType{
+				".one.two.three.four.new-item": Deleted,
+			},
+		},
+		{
+			name: "nested sequence with modified scalar value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][0]": Modified,
+			},
+		},
+		{
+			name: "nested sequence with added scalar value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][1]": Added,
+			},
+		},
+		{
+			name: "nested sequence with deleted scalar value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - item3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][1]": Deleted,
+			},
+		},
+		{
+			name: "nested sequence with modified mapping sequence value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item
+				          value: value1
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item
+				          value: value2
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][1].value": Modified,
+			},
+		},
+		{
+			name: "nested sequence with modified value type from scalar to mapping",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - item3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][1]": Modified,
+			},
+		},
+		{
+			name: "nested sequence with modified value type from mapping to scalar",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][1]": Modified,
+			},
+		},
+		{
+			name: "nested sequence with added mapping sequence value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+				        - name: item4
+				          value: value4
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][2]": Added,
+			},
+		},
+		{
+			name: "nested sequence with deleted mapping sequence value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+				        - name: item4
+				          value: value4
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - name: item3
+				          value: value3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][0][2]": Deleted,
+			},
+		},
+		{
+			name: "nested sequence with modified sequence value type",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				        - item3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - item2
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0]": Modified,
+			},
+		},
+		{
+			name: "nested sequence with added sequence value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				      - - - item3
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][1]": Added,
+			},
+		},
+		{
+			name: "nested sequence with deleted sequence value",
+			left: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+				      - - - item3
+			`),
+			right: heredoc.Doc(`
+				- - - - item1
+				  - - - - item2
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0][1][0][1]": Deleted,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			left := parseAstNode(t, tt.left)
+			right := parseAstNode(t, tt.right)
+
+			diffs := compareNodes(left, right, &compareOptions{})
+
+			if len(tt.expectedDiffs) == 0 {
+				require.Empty(t, diffs)
+				return
+			}
+
+			diffPathTypeMap := make(map[string]DiffType)
+			for _, diff := range diffs {
+				diffPathTypeMap[diff.Path()] = diff.Type()
+			}
+
+			require.Len(t, diffs, len(tt.expectedDiffs))
+			for path, diffType := range tt.expectedDiffs {
+				actualDiffType, exists := diffPathTypeMap[path]
+				require.True(t, exists, "expected diff for path %s not found", path)
+				require.Equal(t, diffType, actualDiffType, "diff type mismatch for path %s", path)
+			}
+		})
+	}
+}
+
 func Test_compareNodesScalarAndCollectionTypes(t *testing.T) {
 	tests := []struct {
 		name         string
