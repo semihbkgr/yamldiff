@@ -2563,6 +2563,265 @@ func Test_comparableNodes(t *testing.T) {
 	}
 }
 
+func Test_stringNodeValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "string node with simple value",
+			input:    `"hello"`,
+			expected: "hello",
+		},
+		{
+			name:     "string node with empty value",
+			input:    `""`,
+			expected: "",
+		},
+		{
+			name:     "string node with special characters",
+			input:    `"hello\nworld"`,
+			expected: "hello\nworld",
+		},
+		{
+			name:     "string node with spaces",
+			input:    `"hello world"`,
+			expected: "hello world",
+		},
+		{
+			name:     "unquoted string",
+			input:    `hello`,
+			expected: "hello",
+		},
+		{
+			name:     "string node with single quotes",
+			input:    `'hello'`,
+			expected: "hello",
+		},
+		{
+			name: "string node with multi-line content using quotes",
+			input: heredoc.Doc(`
+				"line1\nline2\nline3"
+			`),
+			expected: "line1\nline2\nline3",
+		},
+		{
+			name: "string node with yaml special characters",
+			input: heredoc.Doc(`
+				"key: value, [1, 2, 3]"
+			`),
+			expected: "key: value, [1, 2, 3]",
+		},
+		{
+			name: "literal node with simple value",
+			input: heredoc.Doc(`
+				|
+				  hello
+				  world
+			`),
+			expected: "hello\nworld\n",
+		},
+		{
+			name: "literal node with folded style",
+			input: heredoc.Doc(`
+				>
+				  hello
+				  world
+			`),
+			expected: "hello world\n",
+		},
+		{
+			name: "literal node with complex content",
+			input: heredoc.Doc(`
+				|
+				  This is a multi-line
+				  literal string with
+				  preserved line breaks
+				  and   spacing
+			`),
+			expected: "This is a multi-line\nliteral string with\npreserved line breaks\nand   spacing\n",
+		},
+		{
+			name: "literal node with empty content",
+			input: heredoc.Doc(`
+				|
+			`),
+			expected: "",
+		},
+		{
+			name: "literal node with keep final newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+				  hello
+				  world
+
+
+			`),
+			expected: "hello\nworld\n\n\n",
+		},
+		{
+			name: "literal node with strip final newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+				  hello
+				  world
+
+
+			`),
+			expected: "hello\nworld",
+		},
+		{
+			name: "folded node with keep final newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+				  hello
+				  world
+
+
+			`),
+			expected: "hello world\n\n\n",
+		},
+		{
+			name: "folded node with strip final newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+				  hello
+				  world
+
+
+			`),
+			expected: "hello world",
+		},
+		{
+			name: "literal node with indentation and keep newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+				  line 1
+				    indented line 2
+				  line 3
+
+			`),
+			expected: "line 1\n  indented line 2\nline 3\n\n",
+		},
+		{
+			name: "literal node with indentation and strip newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+				  line 1
+				    indented line 2
+				  line 3
+
+			`),
+			expected: "line 1\n  indented line 2\nline 3",
+		},
+		{
+			name: "folded node with long lines and keep newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+				  This is a very long line that should be folded
+				  into a single line with spaces between words.
+				  
+				  This is a second paragraph.
+
+			`),
+			expected: "This is a very long line that should be folded into a single line with spaces between words.\nThis is a second paragraph.\n\n",
+		},
+		{
+			name: "folded node with long lines and strip newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+				  This is a very long line that should be folded
+				  into a single line with spaces between words.
+				  
+				  This is a second paragraph.
+
+			`),
+			expected: "This is a very long line that should be folded into a single line with spaces between words.\nThis is a second paragraph.",
+		},
+		{
+			name: "literal node empty with keep newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+
+
+			`),
+			expected: "\n\n",
+		},
+		{
+			name: "literal node empty with strip newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+
+
+			`),
+			expected: "",
+		},
+		{
+			name: "folded node empty with keep newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+
+
+			`),
+			expected: "\n\n",
+		},
+		{
+			name: "folded node empty with strip newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+
+
+			`),
+			expected: "",
+		},
+		{
+			name:     "integer node returns empty string",
+			input:    `42`,
+			expected: "",
+		},
+		{
+			name:     "float node returns empty string",
+			input:    `3.14`,
+			expected: "",
+		},
+		{
+			name:     "boolean node returns empty string",
+			input:    `true`,
+			expected: "",
+		},
+		{
+			name:     "null node returns empty string",
+			input:    `null`,
+			expected: "",
+		},
+		{
+			name: "array node returns empty string",
+			input: heredoc.Doc(`
+				- 1
+				- 2
+				- 3
+			`),
+			expected: "",
+		},
+		{
+			name: "object node returns empty string",
+			input: heredoc.Doc(`
+				key: value
+			`),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := parseAstNode(t, tt.input)
+			result := stringNodeValue(node)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func parseAstNode(t *testing.T, s string) ast.Node {
 	t.Helper()
 	node, err := parser.ParseBytes([]byte(s), 0)
