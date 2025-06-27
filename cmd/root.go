@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/mattn/go-isatty"
+	"github.com/fatih/color"
 	"github.com/semihbkgr/yamldiff/pkg/diff"
 	"github.com/spf13/cobra"
 )
@@ -41,9 +41,17 @@ func (c *config) shouldUseColor() bool {
 	case "never":
 		return false
 	case "auto":
-		return isatty.IsTerminal(os.Stdout.Fd())
+		return !color.NoColor
 	default:
 		return false // fallback for invalid values
+	}
+}
+
+func (c *config) setNoColor() {
+	if c.shouldUseColor() {
+		color.NoColor = false
+	} else {
+		color.NoColor = true
 	}
 }
 
@@ -121,6 +129,8 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 	if err != nil {
 		return fmt.Errorf("failed to compare files: %w", err)
 	}
+
+	cfg.setNoColor()
 
 	output := diffs.Format(cfg.formatOptions()...)
 	if output != "" {

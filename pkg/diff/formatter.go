@@ -43,7 +43,11 @@ func IncludeCounts(opts *formatOptions) {
 
 // formatter handles the formatting of diffs
 type formatter struct {
-	options formatOptions
+	options       formatOptions
+	colorAdded    *color.Color
+	colorDeleted  *color.Color
+	colorModified *color.Color
+	colorMetadata *color.Color
 }
 
 // newFormatter creates a new formatter with the given options
@@ -52,7 +56,13 @@ func newFormatter(opts ...FormatOption) *formatter {
 	for _, opt := range opts {
 		opt(&options)
 	}
-	return &formatter{options: options}
+	return &formatter{
+		options:       options,
+		colorAdded:    color.New(color.FgHiGreen),
+		colorDeleted:  color.New(color.FgHiRed),
+		colorModified: color.New(color.FgHiYellow),
+		colorMetadata: color.New(color.FgHiWhite),
+	}
 }
 
 // FormatDiff formats a single diff
@@ -126,11 +136,11 @@ func (f *formatter) formatAdded(diff *Diff) string {
 	metadata := getNodeMetadata(diff.rightNode)
 
 	if !f.options.plain {
-		sign = color.HiGreenString(sign)
+		sign = f.colorAdded.Sprint(sign)
 		if path != "" {
-			path = color.HiGreenString(path)
+			path = f.colorAdded.Sprint(path)
 		}
-		metadata = color.HiWhiteString(metadata)
+		metadata = f.colorMetadata.Sprint(metadata)
 	}
 	value = f.formatValueYaml(value)
 
@@ -145,11 +155,11 @@ func (f *formatter) formatDeleted(diff *Diff) string {
 	metadata := getNodeMetadata(diff.leftNode)
 
 	if !f.options.plain {
-		sign = color.HiRedString(sign)
+		sign = f.colorDeleted.Sprint(sign)
 		if path != "" {
-			path = color.HiRedString(path)
+			path = f.colorDeleted.Sprint(path)
 		}
-		metadata = color.HiWhiteString(metadata)
+		metadata = f.colorMetadata.Sprint(metadata)
 	}
 	value = f.formatValueYaml(value)
 
@@ -169,12 +179,12 @@ func (f *formatter) formatModified(diff *Diff) string {
 	symbol := f.getModifiedSymbol(leftMultiLine, rightMultiLine, path, &leftValue, &rightValue)
 
 	if !f.options.plain {
-		sign = color.HiYellowString(sign)
+		sign = f.colorModified.Sprint(sign)
 		if path != "" {
-			path = color.HiYellowString(path)
+			path = f.colorModified.Sprint(path)
 		}
-		leftMetadata = color.HiWhiteString(leftMetadata)
-		rightMetadata = color.HiWhiteString(rightMetadata)
+		leftMetadata = f.colorMetadata.Sprint(leftMetadata)
+		rightMetadata = f.colorMetadata.Sprint(rightMetadata)
 	}
 	leftValue = f.formatValueYaml(leftValue)
 	rightValue = f.formatValueYaml(rightValue)
