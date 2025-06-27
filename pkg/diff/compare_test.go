@@ -430,6 +430,38 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			expectedDiff: true,
 		},
 		{
+			name: "same literals",
+			left: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			right: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			expectedDiff: false,
+		},
+		{
+			name: "different literals",
+			left: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			right: heredoc.Doc(`
+				>
+				  line1
+				  line2
+				  line3
+			`),
+			expectedDiff: true,
+		},
+		{
 			name:         "two null",
 			left:         "null",
 			right:        "null",
@@ -469,6 +501,28 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			name:         "integer and float",
 			left:         "42",
 			right:        "42.0",
+			expectedDiff: true,
+		},
+		{
+			name: "same literal and string values",
+			left: heredoc.Doc(`
+				|-
+				  line1
+				  line2
+				  line3
+			`),
+			right:        `"line1\nline2\nline3"`,
+			expectedDiff: false,
+		},
+		{
+			name: "different literal and string values",
+			left: heredoc.Doc(`
+				>+
+				  line1
+				  line2
+				  line3
+			`),
+			right:        `"line1 line2 line3"`,
 			expectedDiff: true,
 		},
 	}
@@ -2349,6 +2403,475 @@ func Test_compareNodesNilNodes(t *testing.T) {
 			} else {
 				require.Empty(t, diffs)
 			}
+		})
+	}
+}
+
+func Test_comparableNodes(t *testing.T) {
+	tests := []struct {
+		name       string
+		left       string
+		right      string
+		comparable bool
+	}{
+		// Same types
+		{
+			name:       "integer and integer",
+			left:       "42",
+			right:      "84",
+			comparable: true,
+		},
+		{
+			name:       "float and float",
+			left:       "3.14",
+			right:      "2.71",
+			comparable: true,
+		},
+		{
+			name:       "boolean and boolean",
+			left:       "true",
+			right:      "false",
+			comparable: true,
+		},
+		{
+			name:       "null and null",
+			left:       "null",
+			right:      "null",
+			comparable: true,
+		},
+		{
+			name:       "mapping and mapping",
+			left:       "foo: bar",
+			right:      "baz: qux",
+			comparable: true,
+		},
+		{
+			name:       "sequence and sequence",
+			left:       "- foo\n- bar",
+			right:      "- baz\n- qux",
+			comparable: true,
+		},
+		// String and Literal type compatibility
+		{
+			name:       "string and string",
+			left:       "foo",
+			right:      "bar",
+			comparable: true,
+		},
+		{
+			name:       "string and literal",
+			left:       "foo",
+			right:      "|\n  bar",
+			comparable: true,
+		},
+		{
+			name:       "literal and string",
+			left:       "|\n  foo",
+			right:      "bar",
+			comparable: true,
+		},
+		{
+			name:       "literal and literal",
+			left:       "|\n  foo",
+			right:      ">\n  bar",
+			comparable: true,
+		},
+		// Different incompatible types
+		{
+			name:       "string and integer",
+			left:       "foo",
+			right:      "42",
+			comparable: false,
+		},
+		{
+			name:       "string and float",
+			left:       "foo",
+			right:      "3.14",
+			comparable: false,
+		},
+		{
+			name:       "string and boolean",
+			left:       "foo",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "string and null",
+			left:       "foo",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "string and mapping",
+			left:       "foo",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "string and sequence",
+			left:       "foo",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "integer and float",
+			left:       "42",
+			right:      "3.14",
+			comparable: false,
+		},
+		{
+			name:       "integer and boolean",
+			left:       "42",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "integer and null",
+			left:       "42",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "integer and mapping",
+			left:       "42",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "integer and sequence",
+			left:       "42",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "float and boolean",
+			left:       "3.14",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "float and null",
+			left:       "3.14",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "float and mapping",
+			left:       "3.14",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "float and sequence",
+			left:       "3.14",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "boolean and null",
+			left:       "true",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "boolean and mapping",
+			left:       "true",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "boolean and sequence",
+			left:       "true",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "null and mapping",
+			left:       "null",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "null and sequence",
+			left:       "null",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "mapping and sequence",
+			left:       "key: value",
+			right:      "- item",
+			comparable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftNode := parseAstNode(t, tt.left)
+			rightNode := parseAstNode(t, tt.right)
+
+			result := comparableNodes(leftNode, rightNode)
+			require.Equal(t, tt.comparable, result, "comparableNodes(%s, %s) = %v, want %v",
+				tt.left, tt.right, result, tt.comparable)
+		})
+	}
+}
+
+func Test_stringNodeValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "string node with simple value",
+			input:    `"hello"`,
+			expected: "hello",
+		},
+		{
+			name:     "string node with empty value",
+			input:    `""`,
+			expected: "",
+		},
+		{
+			name:     "string node with special characters",
+			input:    `"hello\nworld"`,
+			expected: "hello\nworld",
+		},
+		{
+			name:     "string node with spaces",
+			input:    `"hello world"`,
+			expected: "hello world",
+		},
+		{
+			name:     "unquoted string",
+			input:    `hello`,
+			expected: "hello",
+		},
+		{
+			name:     "string node with single quotes",
+			input:    `'hello'`,
+			expected: "hello",
+		},
+		{
+			name: "string node with multi-line content using quotes",
+			input: heredoc.Doc(`
+				"line1\nline2\nline3"
+			`),
+			expected: "line1\nline2\nline3",
+		},
+		{
+			name: "string node with yaml special characters",
+			input: heredoc.Doc(`
+				"key: value, [1, 2, 3]"
+			`),
+			expected: "key: value, [1, 2, 3]",
+		},
+		{
+			name: "literal node with simple value",
+			input: heredoc.Doc(`
+				|
+				  hello
+				  world
+			`),
+			expected: "hello\nworld\n",
+		},
+		{
+			name: "literal node with folded style",
+			input: heredoc.Doc(`
+				>
+				  hello
+				  world
+			`),
+			expected: "hello world\n",
+		},
+		{
+			name: "literal node with complex content",
+			input: heredoc.Doc(`
+				|
+				  This is a multi-line
+				  literal string with
+				  preserved line breaks
+				  and   spacing
+			`),
+			expected: "This is a multi-line\nliteral string with\npreserved line breaks\nand   spacing\n",
+		},
+		{
+			name: "literal node with empty content",
+			input: heredoc.Doc(`
+				|
+			`),
+			expected: "",
+		},
+		{
+			name: "literal node with keep final newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+				  hello
+				  world
+
+
+			`),
+			expected: "hello\nworld\n\n\n",
+		},
+		{
+			name: "literal node with strip final newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+				  hello
+				  world
+
+
+			`),
+			expected: "hello\nworld",
+		},
+		{
+			name: "folded node with keep final newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+				  hello
+				  world
+
+
+			`),
+			expected: "hello world\n\n\n",
+		},
+		{
+			name: "folded node with strip final newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+				  hello
+				  world
+
+
+			`),
+			expected: "hello world",
+		},
+		{
+			name: "literal node with indentation and keep newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+				  line 1
+				    indented line 2
+				  line 3
+
+			`),
+			expected: "line 1\n  indented line 2\nline 3\n\n",
+		},
+		{
+			name: "literal node with indentation and strip newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+				  line 1
+				    indented line 2
+				  line 3
+
+			`),
+			expected: "line 1\n  indented line 2\nline 3",
+		},
+		{
+			name: "folded node with long lines and keep newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+				  This is a very long line that should be folded
+				  into a single line with spaces between words.
+				  
+				  This is a second paragraph.
+
+			`),
+			expected: "This is a very long line that should be folded into a single line with spaces between words.\nThis is a second paragraph.\n\n",
+		},
+		{
+			name: "folded node with long lines and strip newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+				  This is a very long line that should be folded
+				  into a single line with spaces between words.
+				  
+				  This is a second paragraph.
+
+			`),
+			expected: "This is a very long line that should be folded into a single line with spaces between words.\nThis is a second paragraph.",
+		},
+		{
+			name: "literal node empty with keep newlines (|+)",
+			input: heredoc.Doc(`
+				|+
+
+
+			`),
+			expected: "\n\n",
+		},
+		{
+			name: "literal node empty with strip newlines (|-)",
+			input: heredoc.Doc(`
+				|-
+
+
+			`),
+			expected: "",
+		},
+		{
+			name: "folded node empty with keep newlines (>+)",
+			input: heredoc.Doc(`
+				>+
+
+
+			`),
+			expected: "\n\n",
+		},
+		{
+			name: "folded node empty with strip newlines (>-)",
+			input: heredoc.Doc(`
+				>-
+
+
+			`),
+			expected: "",
+		},
+		{
+			name:     "integer node returns empty string",
+			input:    `42`,
+			expected: "",
+		},
+		{
+			name:     "float node returns empty string",
+			input:    `3.14`,
+			expected: "",
+		},
+		{
+			name:     "boolean node returns empty string",
+			input:    `true`,
+			expected: "",
+		},
+		{
+			name:     "null node returns empty string",
+			input:    `null`,
+			expected: "",
+		},
+		{
+			name: "array node returns empty string",
+			input: heredoc.Doc(`
+				- 1
+				- 2
+				- 3
+			`),
+			expected: "",
+		},
+		{
+			name: "object node returns empty string",
+			input: heredoc.Doc(`
+				key: value
+			`),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := parseAstNode(t, tt.input)
+			result := stringNodeValue(node)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

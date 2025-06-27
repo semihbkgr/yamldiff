@@ -87,7 +87,7 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		return nil
 	}
 
-	if ln == nil || rn == nil || ln.Type() != rn.Type() {
+	if ln == nil || rn == nil || !comparableNodes(ln, rn) {
 		return []*Diff{newDiff(ln, rn)}
 	}
 
@@ -97,10 +97,10 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		return compareMappingNodes(ln.(*ast.MappingNode), rn.(*ast.MappingNode), options)
 	case ast.SequenceType:
 		return compareSequenceNodes(ln.(*ast.SequenceNode), rn.(*ast.SequenceNode), options)
-	case ast.StringType:
-		leftStringNode := ln.(*ast.StringNode)
-		rightStringNode := rn.(*ast.StringNode)
-		if leftStringNode.Value != rightStringNode.Value {
+	case ast.StringType, ast.LiteralType:
+		leftNodeString := stringNodeValue(ln)
+		rightNodeString := stringNodeValue(rn)
+		if leftNodeString != rightNodeString {
 			return []*Diff{newDiff(ln, rn)}
 		}
 	case ast.IntegerType:
@@ -125,6 +125,15 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		return nil
 	}
 	return nil
+}
+
+func comparableNodes(leftNode, rightNode ast.Node) bool {
+	switch leftNode.Type() {
+	case ast.StringType, ast.LiteralType:
+		return rightNode.Type() == ast.StringType || rightNode.Type() == ast.LiteralType
+	default:
+		return leftNode.Type() == rightNode.Type()
+	}
 }
 
 func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareOptions) []*Diff {
@@ -236,4 +245,15 @@ func ignoreIndexes(diffs []*Diff, options *compareOptions) []*Diff {
 	}
 
 	return resultDiffs
+}
+
+func stringNodeValue(node ast.Node) string {
+	switch t := node.(type) {
+	case *ast.StringNode:
+		return t.Value
+	case *ast.LiteralNode:
+		return t.Value.Value
+	default:
+		return ""
+	}
 }
