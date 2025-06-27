@@ -430,6 +430,38 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			expectedDiff: true,
 		},
 		{
+			name: "same literals",
+			left: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			right: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			expectedDiff: false,
+		},
+		{
+			name: "different literals",
+			left: heredoc.Doc(`
+				|
+				  line1
+				  line2
+				  line3
+			`),
+			right: heredoc.Doc(`
+				>
+				  line1
+				  line2
+				  line3
+			`),
+			expectedDiff: true,
+		},
+		{
 			name:         "two null",
 			left:         "null",
 			right:        "null",
@@ -469,6 +501,28 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			name:         "integer and float",
 			left:         "42",
 			right:        "42.0",
+			expectedDiff: true,
+		},
+		{
+			name: "same literal and string values",
+			left: heredoc.Doc(`
+				|-
+				  line1
+				  line2
+				  line3
+			`),
+			right:        `"line1\nline2\nline3"`,
+			expectedDiff: false,
+		},
+		{
+			name: "different literal and string values",
+			left: heredoc.Doc(`
+				>+
+				  line1
+				  line2
+				  line3
+			`),
+			right:        `"line1 line2 line3"`,
 			expectedDiff: true,
 		},
 	}
