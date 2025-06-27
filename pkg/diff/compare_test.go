@@ -2689,6 +2689,565 @@ func Test_comparableNodes(t *testing.T) {
 	}
 }
 
+func Test_compareMappingNodes(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs int
+		expectedTypes map[DiffType]int
+	}{
+		{
+			name: "identical mappings",
+			left: heredoc.Doc(`
+				foo: bar
+				baz: qux
+			`),
+			right: heredoc.Doc(`
+				foo: bar
+				baz: qux
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name:          "empty mappings",
+			left:          "{}",
+			right:         "{}",
+			expectedDiffs: 0,
+		},
+		{
+			name:          "added keys",
+			left:          "{}",
+			right:         "foo: bar\nbaz: qux",
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Added: 2},
+		},
+		{
+			name:          "deleted keys",
+			left:          "foo: bar\nbaz: qux",
+			right:         "{}",
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Deleted: 2},
+		},
+		{
+			name: "modified values",
+			left: heredoc.Doc(`
+				foo: bar
+				baz: qux
+			`),
+			right: heredoc.Doc(`
+				foo: modified_bar
+				baz: modified_qux
+			`),
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Modified: 2},
+		},
+		{
+			name: "all diff types",
+			left: heredoc.Doc(`
+				foo: bar
+				baz: qux
+			`),
+			right: heredoc.Doc(`
+				foo: modified_bar
+				new_key: new_value
+			`),
+			expectedDiffs: 3,
+			expectedTypes: map[DiffType]int{Modified: 1, Added: 1, Deleted: 1},
+		},
+		{
+			name: "nested mapping changes",
+			left: heredoc.Doc(`
+				parent:
+				  child1: value1
+				  child2: value2
+			`),
+			right: heredoc.Doc(`
+				parent:
+				  child1: modified_value1
+				  child3: value3
+			`),
+			expectedDiffs: 3,
+			expectedTypes: map[DiffType]int{Modified: 1, Added: 1, Deleted: 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftNode := parseAstNode(t, tt.left)
+			rightNode := parseAstNode(t, tt.right)
+
+			require.Equal(t, ast.MappingType, leftNode.Type())
+			require.Equal(t, ast.MappingType, rightNode.Type())
+
+			leftMappingNode := leftNode.(*ast.MappingNode)
+			rightMappingNode := rightNode.(*ast.MappingNode)
+
+			options := &compareOptions{ignoreSeqOrder: false}
+			diffs := compareMappingNodes(leftMappingNode, rightMappingNode, options)
+
+			require.Len(t, diffs, tt.expectedDiffs)
+
+			if tt.expectedTypes != nil {
+				actualTypes := make(map[DiffType]int)
+				for _, diff := range diffs {
+					actualTypes[diff.Type()]++
+				}
+				require.Equal(t, tt.expectedTypes, actualTypes)
+			}
+		})
+	}
+}
+
+func Test_mappingValueNodesIntoMap(t *testing.T) {
+	tests := []struct {
+		name         string
+		yaml         string
+		expectedKeys []string
+		expectedLen  int
+	}{
+		{
+			name:         "empty mapping",
+			yaml:         "{}",
+			expectedKeys: []string{},
+			expectedLen:  0,
+		},
+		{
+			name: "simple mapping",
+			yaml: heredoc.Doc(`
+				foo: bar
+				baz: qux
+			`),
+			expectedKeys: []string{"foo", "baz"},
+			expectedLen:  2,
+		},
+		{
+			name: "nested mapping",
+			yaml: heredoc.Doc(`
+				parent:
+				  child1: value1
+				  child2: value2
+				sibling: value3
+			`),
+			expectedKeys: []string{"parent", "sibling"},
+			expectedLen:  2,
+		},
+		{
+			name: "special character keys",
+			yaml: heredoc.Doc(`
+				"key with spaces": value1
+				"key-with-dashes": value2
+				"key.with.dots": value3
+			`),
+			expectedKeys: []string{"\"key with spaces\"", "\"key-with-dashes\"", "\"key.with.dots\""},
+			expectedLen:  3,
+		},
+		{
+			name: "numeric keys",
+			yaml: heredoc.Doc(`
+				1: value1
+				2: value2
+				10: value10
+			`),
+			expectedKeys: []string{"1", "2", "10"},
+			expectedLen:  3,
+		},
+		{
+			name: "mixed value types",
+			yaml: heredoc.Doc(`
+				string_key: "string_value"
+				int_key: 42
+				bool_key: true
+				null_key: null
+				array_key:
+				  - item1
+				  - item2
+			`),
+			expectedKeys: []string{"string_key", "int_key", "bool_key", "null_key", "array_key"},
+			expectedLen:  5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := parseAstNode(t, tt.yaml)
+			require.Equal(t, ast.MappingType, node.Type())
+
+			mappingNode := node.(*ast.MappingNode)
+			result := mappingValueNodesIntoMap(mappingNode)
+
+			require.Len(t, result, tt.expectedLen)
+
+			// Check that all expected keys are present
+			for _, expectedKey := range tt.expectedKeys {
+				require.Contains(t, result, expectedKey)
+				require.NotNil(t, result[expectedKey])
+				require.Equal(t, expectedKey, result[expectedKey].Key.String())
+			}
+
+			// Check that no unexpected keys are present
+			require.Len(t, result, len(tt.expectedKeys))
+		})
+	}
+}
+
+func Test_compareSequenceNodes(t *testing.T) {
+	tests := []struct {
+		name           string
+		left           string
+		right          string
+		ignoreSeqOrder bool
+		expectedDiffs  int
+		expectedTypes  map[DiffType]int
+	}{
+		{
+			name: "identical sequences",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  0,
+		},
+		{
+			name:           "empty sequences",
+			left:           "[]",
+			right:          "[]",
+			ignoreSeqOrder: false,
+			expectedDiffs:  0,
+		},
+		{
+			name: "added elements",
+			left: "[]",
+			right: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  2,
+			expectedTypes:  map[DiffType]int{Added: 2},
+		},
+		{
+			name: "deleted elements",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			right:          "[]",
+			ignoreSeqOrder: false,
+			expectedDiffs:  2,
+			expectedTypes:  map[DiffType]int{Deleted: 2},
+		},
+		{
+			name: "modified elements",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			right: heredoc.Doc(`
+				- modified_foo
+				- modified_bar
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  2,
+			expectedTypes:  map[DiffType]int{Modified: 2},
+		},
+		{
+			name: "all diff types",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			right: heredoc.Doc(`
+				- modified_foo
+				- bar
+				- baz
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  2,
+			expectedTypes:  map[DiffType]int{Modified: 1, Added: 1},
+		},
+		{
+			name: "sequence with different order - ignoreSeqOrder false",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- baz
+				- foo
+				- bar
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  3,
+			expectedTypes:  map[DiffType]int{Modified: 3},
+		},
+		{
+			name: "sequence with different order - ignoreSeqOrder true",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- baz
+				- foo
+				- bar
+			`),
+			ignoreSeqOrder: true,
+			expectedDiffs:  0,
+		},
+		{
+			name: "nested sequences",
+			left: heredoc.Doc(`
+				- - item1
+				  - item2
+				- item3
+			`),
+			right: heredoc.Doc(`
+				- - item1
+				  - modified_item2
+				- item3
+			`),
+			ignoreSeqOrder: false,
+			expectedDiffs:  1,
+			expectedTypes:  map[DiffType]int{Modified: 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftNode := parseAstNode(t, tt.left)
+			rightNode := parseAstNode(t, tt.right)
+
+			require.Equal(t, ast.SequenceType, leftNode.Type())
+			require.Equal(t, ast.SequenceType, rightNode.Type())
+
+			leftSequenceNode := leftNode.(*ast.SequenceNode)
+			rightSequenceNode := rightNode.(*ast.SequenceNode)
+
+			options := &compareOptions{ignoreSeqOrder: tt.ignoreSeqOrder}
+			diffs := compareSequenceNodes(leftSequenceNode, rightSequenceNode, options)
+
+			require.Len(t, diffs, tt.expectedDiffs)
+
+			if tt.expectedTypes != nil {
+				actualTypes := make(map[DiffType]int)
+				for _, diff := range diffs {
+					actualTypes[diff.Type()]++
+				}
+				require.Equal(t, tt.expectedTypes, actualTypes)
+			}
+		})
+	}
+}
+
+func Test_ignoreIndexes(t *testing.T) {
+	tests := []struct {
+		name          string
+		left          string
+		right         string
+		expectedDiffs int
+		expectedTypes map[DiffType]int
+	}{
+		{
+			name: "identical sequences",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "same elements different order",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- baz
+				- foo
+				- bar
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "one element added",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			right: heredoc.Doc(`
+				- bar
+				- foo
+				- baz
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Added: 1},
+		},
+		{
+			name: "one element removed",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- bar
+				- foo
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Deleted: 1},
+		},
+		{
+			name: "element modified",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- foo
+				- modified_bar
+				- baz
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Modified: 1},
+		},
+		{
+			name: "multiple changes",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- baz
+			`),
+			right: heredoc.Doc(`
+				- baz
+				- modified_bar
+				- qux
+			`),
+			expectedDiffs: 3,
+			expectedTypes: map[DiffType]int{Deleted: 1, Modified: 1, Added: 1},
+		},
+		{
+			name: "complex objects with same content",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			right: heredoc.Doc(`
+				- name: bob
+				  age: 25
+				- name: alice
+				  age: 30
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "nested sequences",
+			left: heredoc.Doc(`
+				- - item1
+				  - item2
+				- - item3
+				  - item4
+			`),
+			right: heredoc.Doc(`
+				- - item3
+				  - item4
+				- - item1
+				  - item2
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name:          "empty sequences",
+			left:          "[]",
+			right:         "[]",
+			expectedDiffs: 0,
+		},
+		{
+			name: "left empty right has elements",
+			left: "[]",
+			right: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Added: 2},
+		},
+		{
+			name: "left has elements right empty",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+			`),
+			right:         "[]",
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Deleted: 2},
+		},
+		{
+			name: "duplicate elements in sequence",
+			left: heredoc.Doc(`
+				- foo
+				- bar
+				- foo
+			`),
+			right: heredoc.Doc(`
+				- bar
+				- foo
+			`),
+			expectedDiffs: 1, // One 'foo' should be matched, one should be deleted
+			expectedTypes: map[DiffType]int{Deleted: 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftNode := parseAstNode(t, tt.left)
+			rightNode := parseAstNode(t, tt.right)
+
+			require.Equal(t, ast.SequenceType, leftNode.Type())
+			require.Equal(t, ast.SequenceType, rightNode.Type())
+
+			leftSequenceNode := leftNode.(*ast.SequenceNode)
+			rightSequenceNode := rightNode.(*ast.SequenceNode)
+
+			// First get the raw diffs without ignoring order
+			options := &compareOptions{ignoreSeqOrder: false}
+			rawDiffs := compareSequenceNodes(leftSequenceNode, rightSequenceNode, options)
+
+			// Then apply ignoreIndexes to simulate the ignoreSeqOrder behavior
+			filteredDiffs := ignoreIndexes(rawDiffs, options)
+
+			require.Len(t, filteredDiffs, tt.expectedDiffs)
+
+			if tt.expectedTypes != nil {
+				actualTypes := make(map[DiffType]int)
+				for _, diff := range filteredDiffs {
+					actualTypes[diff.Type()]++
+				}
+				require.Equal(t, tt.expectedTypes, actualTypes)
+			}
+		})
+	}
+}
+
 func Test_stringNodeValue(t *testing.T) {
 	tests := []struct {
 		name     string
