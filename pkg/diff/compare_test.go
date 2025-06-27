@@ -2353,6 +2353,216 @@ func Test_compareNodesNilNodes(t *testing.T) {
 	}
 }
 
+func Test_comparableNodes(t *testing.T) {
+	tests := []struct {
+		name       string
+		left       string
+		right      string
+		comparable bool
+	}{
+		// Same types
+		{
+			name:       "integer and integer",
+			left:       "42",
+			right:      "84",
+			comparable: true,
+		},
+		{
+			name:       "float and float",
+			left:       "3.14",
+			right:      "2.71",
+			comparable: true,
+		},
+		{
+			name:       "boolean and boolean",
+			left:       "true",
+			right:      "false",
+			comparable: true,
+		},
+		{
+			name:       "null and null",
+			left:       "null",
+			right:      "null",
+			comparable: true,
+		},
+		{
+			name:       "mapping and mapping",
+			left:       "foo: bar",
+			right:      "baz: qux",
+			comparable: true,
+		},
+		{
+			name:       "sequence and sequence",
+			left:       "- foo\n- bar",
+			right:      "- baz\n- qux",
+			comparable: true,
+		},
+		// String and Literal type compatibility
+		{
+			name:       "string and string",
+			left:       "foo",
+			right:      "bar",
+			comparable: true,
+		},
+		{
+			name:       "string and literal",
+			left:       "foo",
+			right:      "|\n  bar",
+			comparable: true,
+		},
+		{
+			name:       "literal and string",
+			left:       "|\n  foo",
+			right:      "bar",
+			comparable: true,
+		},
+		{
+			name:       "literal and literal",
+			left:       "|\n  foo",
+			right:      ">\n  bar",
+			comparable: true,
+		},
+		// Different incompatible types
+		{
+			name:       "string and integer",
+			left:       "foo",
+			right:      "42",
+			comparable: false,
+		},
+		{
+			name:       "string and float",
+			left:       "foo",
+			right:      "3.14",
+			comparable: false,
+		},
+		{
+			name:       "string and boolean",
+			left:       "foo",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "string and null",
+			left:       "foo",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "string and mapping",
+			left:       "foo",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "string and sequence",
+			left:       "foo",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "integer and float",
+			left:       "42",
+			right:      "3.14",
+			comparable: false,
+		},
+		{
+			name:       "integer and boolean",
+			left:       "42",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "integer and null",
+			left:       "42",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "integer and mapping",
+			left:       "42",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "integer and sequence",
+			left:       "42",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "float and boolean",
+			left:       "3.14",
+			right:      "true",
+			comparable: false,
+		},
+		{
+			name:       "float and null",
+			left:       "3.14",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "float and mapping",
+			left:       "3.14",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "float and sequence",
+			left:       "3.14",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "boolean and null",
+			left:       "true",
+			right:      "null",
+			comparable: false,
+		},
+		{
+			name:       "boolean and mapping",
+			left:       "true",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "boolean and sequence",
+			left:       "true",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "null and mapping",
+			left:       "null",
+			right:      "key: value",
+			comparable: false,
+		},
+		{
+			name:       "null and sequence",
+			left:       "null",
+			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "mapping and sequence",
+			left:       "key: value",
+			right:      "- item",
+			comparable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftNode := parseAstNode(t, tt.left)
+			rightNode := parseAstNode(t, tt.right)
+
+			result := comparableNodes(leftNode, rightNode)
+			require.Equal(t, tt.comparable, result, "comparableNodes(%s, %s) = %v, want %v",
+				tt.left, tt.right, result, tt.comparable)
+		})
+	}
+}
+
 func parseAstNode(t *testing.T, s string) ast.Node {
 	t.Helper()
 	node, err := parser.ParseBytes([]byte(s), 0)
