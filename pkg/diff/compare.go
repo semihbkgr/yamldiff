@@ -121,7 +121,13 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		if leftBoolNode.Value != rightBoolNode.Value {
 			return []*Diff{newDiff(ln, rn)}
 		}
-	case ast.NullType:
+	case ast.InfinityType:
+		leftInfinityNode := ln.(*ast.InfinityNode)
+		rightInfinityNode := rn.(*ast.InfinityNode)
+		if leftInfinityNode.Value != rightInfinityNode.Value {
+			return []*Diff{newDiff(ln, rn)}
+		}
+	case ast.NullType, ast.NanType:
 		return nil
 	}
 	return nil

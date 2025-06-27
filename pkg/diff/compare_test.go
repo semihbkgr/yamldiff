@@ -462,10 +462,34 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			expectedDiff: true,
 		},
 		{
+			name:         "same infinity",
+			left:         ".inf",
+			right:        ".inf",
+			expectedDiff: false,
+		},
+		{
+			name:         "different infinity",
+			left:         ".inf",
+			right:        "-.inf",
+			expectedDiff: true,
+		},
+		{
 			name:         "two null",
 			left:         "null",
 			right:        "null",
 			expectedDiff: false,
+		},
+		{
+			name:         "two nan",
+			left:         ".nan",
+			right:        ".nan",
+			expectedDiff: false,
+		},
+		{
+			name:         "nan and null",
+			left:         ".nan",
+			right:        "null",
+			expectedDiff: true,
 		},
 		{
 			name:         "null and integer",
@@ -501,6 +525,24 @@ func Test_compareNodesScalarTypes(t *testing.T) {
 			name:         "integer and float",
 			left:         "42",
 			right:        "42.0",
+			expectedDiff: true,
+		},
+		{
+			name:         "float and infinity",
+			left:         "3.14",
+			right:        ".inf",
+			expectedDiff: true,
+		},
+		{
+			name:         "float and nan",
+			left:         "3.14",
+			right:        ".nan",
+			expectedDiff: true,
+		},
+		{
+			name:         "infinity and nan",
+			left:         ".inf",
+			right:        ".nan",
 			expectedDiff: true,
 		},
 		{
@@ -2451,6 +2493,18 @@ func Test_comparableNodes(t *testing.T) {
 			right:      "- baz\n- qux",
 			comparable: true,
 		},
+		{
+			name:       "infinity and infinity",
+			left:       ".inf",
+			right:      "-.inf",
+			comparable: true,
+		},
+		{
+			name:       "nan and nan",
+			left:       ".nan",
+			right:      ".nan",
+			comparable: true,
+		},
 		// String and Literal type compatibility
 		{
 			name:       "string and string",
@@ -2565,6 +2619,24 @@ func Test_comparableNodes(t *testing.T) {
 			name:       "float and sequence",
 			left:       "3.14",
 			right:      "- item",
+			comparable: false,
+		},
+		{
+			name:       "float and infinity",
+			left:       "3.14",
+			right:      ".inf",
+			comparable: false,
+		},
+		{
+			name:       "float and nan",
+			left:       "3.14",
+			right:      ".nan",
+			comparable: false,
+		},
+		{
+			name:       "infinity and nan",
+			left:       ".inf",
+			right:      ".nan",
 			comparable: false,
 		},
 		{
