@@ -288,8 +288,8 @@ func formatNodeValue(node ast.Node, indent int, startNewLine bool) (string, bool
 	s := node.String()
 	lines := strings.Split(s, "\n")
 
-	// Single line values (except mappings) don't need special formatting
-	if len(lines) == 1 && node.Type() != ast.MappingType {
+	// Single line values (except collection types) don't need special formatting
+	if len(lines) == 1 && node.Type() != ast.MappingType && node.Type() != ast.SequenceType {
 		return s, false
 	}
 
