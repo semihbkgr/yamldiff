@@ -14,14 +14,12 @@ scrape_configs:
       - targets:
           - "localhost:9100"
           - "localhost:9200"
-
   - job_name: "app"
     metrics_path: "/metrics"
     scheme: http
     static_configs:
       - targets:
           - "app-1.local:8000"
-
   - job_name: "kubernetes"
     kubernetes_sd_configs:
       - role: pod
