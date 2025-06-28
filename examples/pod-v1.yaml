@@ -1,24 +1,30 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: web-app
+  name: app
   labels:
-    app: web
+    app: app
+    instance: "app-v1"
     version: "v1"
 spec:
   containers:
-  - name: web-container
-    image: web-app:1.0
-    ports:
-    - containerPort: 80
-    resources:
-      limits:
-        memory: 512Mib
-        cpu: "300m"
-    volumeMounts:
-    - name: config-volume
-      mountPath: /etc/config
+    - name: app
+      image: app:1.0
+      ports:
+        - name: http-port
+          containerPort: 80
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 512Mi
+          cpu: "300m"
+      volumeMounts:
+        - name: config-volume
+          subPath: app-config.yaml
+          mountPath: /etc/config
   volumes:
-  - name: config-volume
-    configMap:
-      name: app-config
+    - name: config-volume
+      configMap:
+        name: app-config

@@ -1,19 +1,45 @@
 # yamldiff
 
-`yamldiff` is a utility tool designed for comparing the structure of YAML files. It helps you quickly identify and understand differences between them by highlighting structural variations in a clear and concise way.
+[![Go Reference](https://pkg.go.dev/badge/github.com/semihbkgr/yamldiff.svg)](https://pkg.go.dev/github.com/semihbkgr/yamldiff)
+[![Go CI](https://github.com/semihbkgr/yamldiff/actions/workflows/ci.yaml/badge.svg)](https://github.com/semihbkgr/yamldiff/actions/workflows/ci.yaml)
+[![codecov](https://codecov.io/gh/semihbkgr/yamldiff/graph/badge.svg?token=3DYZXV89VE)](https://codecov.io/gh/semihbkgr/yamldiff)
+
+`yamldiff` is a utility tool for comparing YAML files and highlighting structural changes with clarity and precision. It produces clear visual output that shows exactly what has been added, removed, or modified, making it easier to track configuration updates, analyze deployment differences, and debug YAML structures.
 
 ![example](images/example.png)
 
+## Key Features
+
+- **Structural comparison** - Detects changes in YAML data structure, layout, and values
+- **Rich visual output** - Colored diff display with customizable formatting  
+- **Flexible reporting** - Detailed diffs, paths-only view, summary counts, or metadata including line numbers and value types
+- **Library support** - Import as a Go module for programmatic use
+
 ## Installation
 
+Install `yamldiff` using Go's package manager:
+
 ```bash
-$ go install github.com/semihbkgr/yamldiff@latest
+go install github.com/semihbkgr/yamldiff@latest
 ```
 
-Run with `help` flag to view a list of available options.
+## Quick Start
+
+Compare two YAML files with a simple command:
 
 ```bash
-$ yamldiff --help
+yamldiff file1.yaml file2.yaml
+```
+
+For a complete list of options and flags:
+
+```bash
+yamldiff --help
+```
+
+## Usage
+
+```text
 structural comparison on two yaml files
 
 Usage:
@@ -30,21 +56,51 @@ Flags:
   -v, --version        version for yamldiff
 ```
 
-## Example
+## Examples
+
+### Basic Comparison with Metadata
 
 ```bash
-$ yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
+yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
 ```
 
 ![example-metadata](images/example-metadata.png)
 
-## Library
+### Paths-Only View with Summary
 
-The `yamldiff` module can also be imported as a library in Go, allowing you to integrate YAML comparison functionality into your own applications.
+```bash
+yamldiff --paths-only --counts examples/pod-v1.yaml examples/pod-v2.yaml
+```
+
+![example-paths-only](images/example-pathsOnly.png)
+
+### Additional Examples
+
+```bash
+# Ignore sequence order when comparing arrays
+$ yamldiff --ignore-order config1.yaml config2.yaml
+
+# Get only a summary count of differences
+$ yamldiff --counts deployment-old.yaml deployment-new.yaml
+
+# Exit with non-zero code if differences found (useful for CI/CD)
+$ yamldiff --exit-code expected.yaml actual.yaml
+```
+
+## Library Usage
+
+The `yamldiff` package can be integrated into your Go applications for programmatic YAML comparison:
 
 ```go
+package main
+
+import (
+    "fmt"
+    "github.com/semihbkgr/yamldiff/pkg/diff"
+)
+
 func main() {
-  left := []byte(`
+    left := []byte(`
 name: Alice
 city: New York
 items:
@@ -52,7 +108,7 @@ items:
   - two
 `)
 
-  right := []byte(`
+    right := []byte(`
 name: Bob
 value: 990
 items:
@@ -60,23 +116,32 @@ items:
   - three
 `)
 
-  diffs, err := diff.Compare(left, right, false, diff.DefaultDiffOptions)
-  if err != nil {
-    panic(err)
-  }
+    diffs, err := diff.Compare(left, right)
+    if err != nil {
+        panic(err)
+    }
 
-  output := diffs.Format(diff.FormatOptions{
-    Plain:    true,
-    Silent:   false,
-    Metadata: false,
-  })
-  fmt.Println(output)
+    fmt.Println(diffs.Format(diff.Plain))
 }
 ```
 
-```out
-~ name: Alice -> Bob
-- city: New York
-+ value: 990
-~ items[1]: two -> three
+**Output:**
+
+```text
+~ .name: Alice → Bob
+- .city: New York
++ .value: 990
+~ .items[1]: two → three
 ```
+
+### API Reference
+
+For detailed API documentation, visit [pkg.go.dev](https://pkg.go.dev/github.com/semihbkgr/yamldiff).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

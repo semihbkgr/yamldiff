@@ -1,20 +1,30 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: web-app
+  name: app
   labels:
-    app: web
+    app: app
+    instance: "app-v2"
     version: "v2"
 spec:
   containers:
-  - name: web-container
-    image: web-app:2.0
-    ports:
-    - containerPort: 8080
-      protocol: TCP
-    resources:
-      limits:
-        memory: 1Gib
+    - name: app
+      image: app:2.0
+      ports:
+        - name: http-port
+          containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 1Gi
+          cpu: "300m"
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: http-port
   initContainers:
-  - name: init-container
-    image: init-app:1.0
+    - name: init-app
+      image: init-app:1.0
