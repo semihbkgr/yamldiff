@@ -92,6 +92,14 @@ func (c *config) validateColorFlag() error {
 	}
 }
 
+// validateMutuallyExclusiveFlags checks for mutually exclusive flags
+func (c *config) validateMutuallyExclusiveFlags() error {
+	if c.pathsOnly && c.metadata {
+		return errors.New("flags --paths-only and --metadata are mutually exclusive")
+	}
+	return nil
+}
+
 // newRootCommand creates the root cobra command
 func newRootCommand() *cobra.Command {
 	cfg := newConfig()
@@ -113,7 +121,7 @@ func newRootCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&cfg.ignoreSeqOrder, "ignore-order", "i", cfg.ignoreSeqOrder, "Ignore sequence order when comparing")
 	cmd.Flags().StringVar(&cfg.color, "color", cfg.color, "When to use color output. It can be one of always, never, or auto.")
 	cmd.Flags().BoolVarP(&cfg.pathsOnly, "paths-only", "p", cfg.pathsOnly, "Show only paths of differences without displaying the values")
-	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include additional metadata such as line numbers and node types in the output")
+	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include additional metadata such as line numbers and node types in the output. (mutually exclusive with --paths-only)")
 	cmd.Flags().BoolVarP(&cfg.counts, "counts", "c", cfg.counts, "Display a summary count of total added, deleted, and modified items")
 
 	return cmd
@@ -122,6 +130,10 @@ func newRootCommand() *cobra.Command {
 // runCommand executes the main comparison logic
 func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 	if err := cfg.validateColorFlag(); err != nil {
+		return err
+	}
+
+	if err := cfg.validateMutuallyExclusiveFlags(); err != nil {
 		return err
 	}
 

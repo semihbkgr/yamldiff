@@ -13,8 +13,8 @@ import (
 // formatOptions holds all formatting configuration
 type formatOptions struct {
 	plain     bool // disables colored output
-	pathsOnly bool // suppresses the display of values
-	metadata  bool // includes additional metadata
+	pathsOnly bool // only shows paths, no values
+	metadata  bool // includes additional metadata about values, it is mutually exclusive with pathsOnly
 	counts    bool // includes diff count summary
 }
 
@@ -27,11 +27,15 @@ func Plain(opts *formatOptions) {
 }
 
 // PathsOnly suppresses the display of values
+// It is mutually exclusive with WithMetadata
+// If this option is set, WithMetadata will be ignored.
 func PathsOnly(opts *formatOptions) {
 	opts.pathsOnly = true
 }
 
 // WithMetadata includes additional metadata in the output
+// It is mutually exclusive with PathsOnly
+// If PathsOnly is set, this option will be ignored.
 func WithMetadata(opts *formatOptions) {
 	opts.metadata = true
 }
