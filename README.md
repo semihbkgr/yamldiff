@@ -25,7 +25,7 @@ Flags:
   -e, --exit-code      Exit with non-zero status code when differences are found
   -h, --help           help for yamldiff
   -i, --ignore-order   Ignore sequence order when comparing
-  -m, --metadata       Include additional metadata such as line numbers and node types in the output
+  -m, --metadata       Include additional metadata such as line numbers and node types in the output. (mutually exclusive with --paths-only)
   -p, --paths-only     Show only paths of differences without displaying the values
   -v, --version        version for yamldiff
 ```
