@@ -47,14 +47,6 @@ func (c *config) shouldUseColor() bool {
 	}
 }
 
-func (c *config) setNoColor() {
-	if c.shouldUseColor() {
-		color.NoColor = false
-	} else {
-		color.NoColor = true
-	}
-}
-
 // compareOptions converts config to diff.CompareOption slice
 func (c *config) compareOptions() []diff.CompareOption {
 	var opts []diff.CompareOption
@@ -141,8 +133,6 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 	if err != nil {
 		return fmt.Errorf("failed to compare files: %w", err)
 	}
-
-	cfg.setNoColor()
 
 	output := diffs.Format(cfg.formatOptions()...)
 	if output != "" {

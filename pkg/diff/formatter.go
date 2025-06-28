@@ -60,13 +60,26 @@ func newFormatter(opts ...FormatOption) *formatter {
 	for _, opt := range opts {
 		opt(&options)
 	}
-	return &formatter{
+	f := &formatter{
 		options:       options,
 		colorAdded:    color.New(color.FgHiGreen),
 		colorDeleted:  color.New(color.FgHiRed),
 		colorModified: color.New(color.FgHiYellow),
 		colorMetadata: color.New(color.FgHiWhite),
 	}
+
+	if !options.plain {
+		f.colorAdded.EnableColor()
+		f.colorDeleted.EnableColor()
+		f.colorModified.EnableColor()
+		f.colorMetadata.EnableColor()
+	} else {
+		f.colorAdded.DisableColor()
+		f.colorDeleted.DisableColor()
+		f.colorModified.DisableColor()
+		f.colorMetadata.DisableColor()
+	}
+	return f
 }
 
 // FormatDiff formats a single diff
@@ -134,64 +147,62 @@ func (f *formatter) formatValueYaml(value string) string {
 
 // formatAdded formats an added diff
 func (f *formatter) formatAdded(diff *Diff) string {
-	sign := "+"
-	path := getNodePath(diff.rightNode)
-	value, _ := f.getNodeValue(diff.rightNode, path)
-	metadata := getNodeMetadata(diff.rightNode)
+	sign := f.colorAdded.Sprint("+")
 
-	if !f.options.plain {
-		sign = f.colorAdded.Sprint(sign)
-		if path != "" {
-			path = f.colorAdded.Sprint(path)
-		}
-		metadata = f.colorMetadata.Sprint(metadata)
+	path := getNodePath(diff.rightNode)
+	if path != "" {
+		path = f.colorAdded.Sprint(path)
 	}
+
+	value, _ := f.getNodeValue(diff.rightNode, path)
 	value = f.formatValueYaml(value)
+
+	metadata := getNodeMetadata(diff.rightNode)
+	metadata = f.colorMetadata.Sprint(metadata)
 
 	return f.buildOutput(sign, path, value, metadata)
 }
 
 // formatDeleted formats a deleted diff
 func (f *formatter) formatDeleted(diff *Diff) string {
-	sign := "-"
-	path := getNodePath(diff.leftNode)
-	value, _ := f.getNodeValue(diff.leftNode, path)
-	metadata := getNodeMetadata(diff.leftNode)
+	sign := f.colorDeleted.Sprint("-")
 
-	if !f.options.plain {
-		sign = f.colorDeleted.Sprint(sign)
-		if path != "" {
-			path = f.colorDeleted.Sprint(path)
-		}
-		metadata = f.colorMetadata.Sprint(metadata)
+	path := getNodePath(diff.leftNode)
+	if path != "" {
+		path = f.colorDeleted.Sprint(path)
 	}
+
+	value, _ := f.getNodeValue(diff.leftNode, path)
 	value = f.formatValueYaml(value)
+
+	metadata := getNodeMetadata(diff.leftNode)
+	metadata = f.colorMetadata.Sprint(metadata)
 
 	return f.buildOutput(sign, path, value, metadata)
 }
 
 // formatModified formats a modified diff
 func (f *formatter) formatModified(diff *Diff) string {
-	sign := "~"
+	sign := f.colorModified.Sprint("~")
+
 	path := getNodePath(diff.leftNode)
+	if path != "" {
+		path = f.colorModified.Sprint(path)
+	}
 
 	leftValue, leftMultiLine := f.getNodeValue(diff.leftNode, path)
+	leftValue = f.formatValueYaml(leftValue)
+
 	rightValue, rightMultiLine := f.getNodeValue(diff.rightNode, path)
+	rightValue = f.formatValueYaml(rightValue)
+
 	leftMetadata := getNodeMetadata(diff.leftNode)
+	leftMetadata = f.colorMetadata.Sprint(leftMetadata)
+
 	rightMetadata := getNodeMetadata(diff.rightNode)
+	rightMetadata = f.colorMetadata.Sprint(rightMetadata)
 
 	symbol := f.getModifiedSymbol(leftMultiLine, rightMultiLine, path, &leftValue, &rightValue)
-
-	if !f.options.plain {
-		sign = f.colorModified.Sprint(sign)
-		if path != "" {
-			path = f.colorModified.Sprint(path)
-		}
-		leftMetadata = f.colorMetadata.Sprint(leftMetadata)
-		rightMetadata = f.colorMetadata.Sprint(rightMetadata)
-	}
-	leftValue = f.formatValueYaml(leftValue)
-	rightValue = f.formatValueYaml(rightValue)
 
 	return f.buildModifiedOutput(sign, path, leftValue, rightValue, symbol, leftMetadata, rightMetadata)
 }
