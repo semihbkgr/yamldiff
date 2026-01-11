@@ -91,7 +91,10 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 		return []*Diff{newDiff(ln, rn)}
 	}
 
-	//todo: handle all types
+	// Handle all value types from the YAML AST.
+	// Note: Structural types (DocumentType, MappingKeyType, MappingValueType, SequenceEntryType,
+	// MergeKeyType, UnknownNodeType) are handled through recursive traversal of their parent
+	// collection types (MappingType, SequenceType) and don't need explicit comparison here.
 	switch ln.Type() {
 	case ast.MappingType:
 		return compareMappingNodes(ln.(*ast.MappingNode), rn.(*ast.MappingNode), options)
@@ -149,14 +152,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 	for k, leftValue := range leftKeyValueMap {
 		rightValue, ok := rightKeyValueMap[k]
 		if !ok {
-			node := leftValue.Value
-			// wrap the MappingValueNode by MappingNode
-			// todo: extract this logic into a function
-			if node.Type() == ast.MappingValueType {
-				path := node.GetPath()
-				node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
-				node.SetPath(path)
-			}
+			node := wrapMappingValueNode(leftValue.Value)
 			keyDiffsMap[k] = []*Diff{newDiff(node, nil)}
 			continue
 		}
@@ -167,13 +163,7 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 		if ok {
 			continue
 		}
-		node := rightValue.Value
-		// wrap the MappingValueNode by MappingNode
-		if node.Type() == ast.MappingValueType {
-			path := node.GetPath()
-			node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
-			node.SetPath(path)
-		}
+		node := wrapMappingValueNode(rightValue.Value)
 		keyDiffsMap[k] = []*Diff{newDiff(nil, node)}
 	}
 
@@ -185,6 +175,17 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 	}
 
 	return allDiffs
+}
+
+// wrapMappingValueNode wraps a MappingValueNode in a MappingNode while preserving its path.
+// This is necessary for proper diff representation when a mapping value is added or deleted.
+func wrapMappingValueNode(node ast.Node) ast.Node {
+	if node.Type() == ast.MappingValueType {
+		path := node.GetPath()
+		node = ast.Mapping(node.GetToken(), false, node.(*ast.MappingValueNode))
+		node.SetPath(path)
+	}
+	return node
 }
 
 func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNode {

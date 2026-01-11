@@ -96,9 +96,12 @@ func (d DocDiffs) Less(i, j int) bool {
 		return lineDelta < 0
 	}
 
-	//TODO
-	// If same line, prioritize deletions over additions for consistent ordering
-	return diffA.leftNode != nil
+	// If same line, sort by diff type for consistent ordering: Deleted < Modified < Added
+	// This ensures deletions appear before modifications, and modifications before additions.
+	// We use > because DiffType enum is: Added(0) < Deleted(1) < Modified(2)
+	typeA := diffA.Type()
+	typeB := diffB.Type()
+	return typeA > typeB
 }
 
 // Format formats the document diffs using the provided options

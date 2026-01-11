@@ -10,6 +10,15 @@ import (
 	"github.com/goccy/go-yaml/printer"
 )
 
+const (
+	// defaultIndent is the indentation level for diff values with paths
+	defaultIndent = 4
+	// rootIndent is the indentation level for root-level values without paths
+	rootIndent = 0
+	// continuationPrefix is the spacing prefix for continuation lines
+	continuationPrefix = 2
+)
+
 // formatOptions holds all formatting configuration
 type formatOptions struct {
 	plain     bool // disables colored output
@@ -209,10 +218,10 @@ func (f *formatter) formatModified(diff *Diff) string {
 
 // getNodeValue extracts and formats the value of a node
 func (f *formatter) getNodeValue(node ast.Node, path string) (string, bool) {
-	indent := 4
+	indent := defaultIndent
 	newLine := true
 	if path == "" {
-		indent = 0
+		indent = rootIndent
 		newLine = false
 	}
 	return formatNodeValue(node, indent, newLine)
@@ -221,21 +230,30 @@ func (f *formatter) getNodeValue(node ast.Node, path string) (string, bool) {
 // getModifiedSymbol determines the symbol to use for modified diffs and adjusts values
 func (f *formatter) getModifiedSymbol(leftMultiLine, rightMultiLine bool, path string, leftValue, rightValue *string) string {
 	symbol := "→"
-	multiline := leftMultiLine || rightMultiLine
+	if !leftMultiLine && !rightMultiLine {
+		return symbol
+	}
 
-	if multiline {
-		symbol = "\n    ↓"
+	// For multiline diffs, use vertical arrow symbol with indentation
+	defaultIndentSpaces := strings.Repeat(" ", defaultIndent)
+	continuationSpaces := strings.Repeat(" ", continuationPrefix)
+	symbol = "\n" + defaultIndentSpaces + "↓"
 
-		if !leftMultiLine && path != "" {
-			*leftValue = fmt.Sprintf("\n    %s", *leftValue)
-		} else if !leftMultiLine && path == "" {
-			*rightValue = fmt.Sprintf("\n  %s", *rightValue)
-		} else if !rightMultiLine && path != "" {
-			*rightValue = fmt.Sprintf("\n    %s", *rightValue)
-		} else if !rightMultiLine && path == "" {
-			*rightValue = fmt.Sprintf("\n  %s", *rightValue)
-		} else if path == "" {
-			*rightValue = fmt.Sprintf("\n  %s", *rightValue)
+	// Determine indentation: use default indent for paths, continuation for root
+	indent := continuationSpaces
+	if path != "" {
+		indent = defaultIndentSpaces
+	}
+
+	// Add newline and indentation to the single-line value
+	// Special case: single-line left value with a path gets formatted on the left
+	if !leftMultiLine && path != "" {
+		*leftValue = fmt.Sprintf("\n%s%s", indent, *leftValue)
+	} else {
+		// All other cases: format the right value
+		// This includes: single-line right, or single-line left without path
+		if !rightMultiLine || (path == "") {
+			*rightValue = fmt.Sprintf("\n%s%s", indent, *rightValue)
 		}
 	}
 
@@ -328,7 +346,7 @@ func formatNodeValue(node ast.Node, indent int, startNewLine bool) (string, bool
 			lines[i] = strings.Repeat(" ", indent) + strings.TrimPrefix(line, strings.Repeat(" ", baseIndent))
 		} else {
 			// Subsequent lines: handle different newline scenarios
-			prefix := "  " // Default 2-space prefix for continuation
+			prefix := strings.Repeat(" ", continuationPrefix) // Default continuation prefix
 			if startNewLine {
 				prefix = "" // No extra prefix when starting with newline
 			}
