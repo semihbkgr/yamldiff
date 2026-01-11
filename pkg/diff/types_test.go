@@ -282,39 +282,6 @@ items:
 	// ~ .items[1]: bar → baz
 }
 
-func ExampleDocDiffs_Format_includeCounts() {
-	left := []byte(`
-name: Alice
-city: New York
-items:
-    - foo
-    - bar
-`)
-
-	right := []byte(`
-name: Bob
-age: 30
-items:
-    - foo
-    - baz
-`)
-
-	diffs, err := Compare(left, right)
-	if err != nil {
-		panic(err)
-	}
-
-	s := diffs.Format(Plain, IncludeCounts)
-	fmt.Println(s)
-
-	// Output:
-	// 1 added, 1 deleted, 2 modified
-	// ~ .name: Alice → Bob
-	// - .city: New York
-	// + .age: 30
-	// ~ .items[1]: bar → baz
-}
-
 func ExampleDocDiffs_Format_withMetadata() {
 	left := []byte(`
 name: Alice
@@ -454,33 +421,6 @@ func TestDocDiffs_Format(t *testing.T) {
 				        action: keep`),
 		},
 		{
-			name:      "with counts",
-			leftYaml:  readFile(t, "testdata/left.yaml"),
-			rightYaml: readFile(t, "testdata/right.yaml"),
-			options:   []FormatOption{Plain, IncludeCounts},
-			expected: heredoc.Doc(`
-				4 added, 2 deleted, 1 modified
-				~ .global.scrape_interval: 15s → 30s
-				+ .global.scrape_timeout: 10s
-				+ .rule_files[2]: "additional_rules.yml"
-				+ .scrape_configs[0].static_configs[0].targets[1]: "localhost:9200"
-				- .scrape_configs[1].static_configs[0].labels: 
-				    instance: "app-1"
-				- .scrape_configs[1].static_configs[1]: 
-				    targets:
-				      - "app-2.local:8000"
-				    labels:
-				      instance: "app-2"
-				+ .scrape_configs[2]: 
-				    job_name: "kubernetes"
-				    kubernetes_sd_configs:
-				      - role: pod
-				    relabel_configs:
-				      - source_labels: [__meta_kubernetes_pod_label_app]
-				        regex: my-app
-				        action: keep`),
-		},
-		{
 			name:      "no plain",
 			leftYaml:  readFile(t, "testdata/left.yaml"),
 			rightYaml: readFile(t, "testdata/right.yaml"),
@@ -609,39 +549,6 @@ func TestDocDiffs_Format(t *testing.T) {
 				    description: "The time when the order was created"`),
 		},
 		{
-			name:      "multi-document with counts",
-			leftYaml:  readFile(t, "testdata/multi-docs-left.yaml"),
-			rightYaml: readFile(t, "testdata/multi-docs-right.yaml"),
-			options:   []FormatOption{Plain, IncludeCounts},
-			expected: heredoc.Doc(`
-				3 added, 0 deleted, 0 modified
-				+ .properties.role: 
-				    type: string
-				    enum:
-				      - admin
-				      - viewer
-				      - editor
-				    description: "The role of the user in the system, defining their permissions"
-				+ .required[2]: email
-				+ .required[3]: role
-				---
-				1 added, 0 deleted, 1 modified
-				~ .properties.name.maxLength: 32 → 64
-				+ .properties.description: 
-				    type: string
-				    maxLength: 512
-				    description: "A brief description of the product"
-				---
-				1 added, 1 deleted, 0 modified
-				- .properties.timestamp: 
-				    type: number
-				    description: "The unix timestamp of when the order was placed"
-				+ .properties.created_at: 
-				    type: string
-				    format: date-time
-				    description: "The time when the order was created"`),
-		},
-		{
 			name:      "multi-document no plain",
 			leftYaml:  readFile(t, "testdata/multi-docs-left.yaml"),
 			rightYaml: readFile(t, "testdata/multi-docs-right.yaml"),
@@ -710,6 +617,25 @@ func TestDocDiffs_Format(t *testing.T) {
 
 			output := docDiffs.Format(tt.options...)
 			require.Equal(t, tt.expected, output, "Expected formatted output to match")
+		})
+	}
+}
+
+func TestDiffType_String(t *testing.T) {
+	tests := []struct {
+		diffType DiffType
+		expected string
+	}{
+		{Added, "Added"},
+		{Deleted, "Deleted"},
+		{Modified, "Modified"},
+		{DiffType(99), "Unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			result := tt.diffType.String()
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

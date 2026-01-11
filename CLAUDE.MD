@@ -40,8 +40,8 @@ yamldiff/
 
 - **root.go** - Cobra command with flags:
   - `--metadata` / `-m` - Include line numbers and node types
-  - `--paths-only` / `-p` - Show only paths
-  - `--counts` / `-c` - Display summary counts
+  - `--path-only` / `-p` - Show only paths
+  - `--stat` / `-s` - Show only diffstat summary
   - `--ignore-order` / `-i` - Ignore sequence order
   - `--exit-code` / `-e` - Exit with non-zero on differences
   - `--color` - Control color output (always/never/auto)

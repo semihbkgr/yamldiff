@@ -46,27 +46,16 @@ func Test_newFormatter(t *testing.T) {
 			},
 		},
 		{
-			name: "with counts",
-			options: []FormatOption{
-				IncludeCounts,
-			},
-			expected: formatOptions{
-				counts: true,
-			},
-		},
-		{
 			name: "with all options",
 			options: []FormatOption{
 				Plain,
 				PathsOnly,
 				WithMetadata,
-				IncludeCounts,
 			},
 			expected: formatOptions{
 				plain:     true,
 				pathsOnly: true,
 				metadata:  true,
-				counts:    true,
 			},
 		},
 	}
@@ -168,20 +157,6 @@ func Test_formatDocDiffs(t *testing.T) {
 			expected: "~ .name: Alice → Bob\n+ .city: NYC",
 		},
 		{
-			name:    "multiple diffs with counts",
-			options: []FormatOption{Plain, IncludeCounts},
-			setupFn: func() DocDiffs {
-				diff1 := createRealisticDiff(t, "name: Alice", "name: Bob")
-				diff2 := createRealisticDiff(t, "age: 30", heredoc.Doc(`
-					age: 30
-					city: NYC
-				`))
-				diff3 := createRealisticDiff(t, "status: active", "")
-				return DocDiffs{diff1, diff2, diff3}
-			},
-			expected: "1 added, 1 deleted, 1 modified\n~ .name: Alice → Bob\n+ .city: NYC\n- status: active",
-		},
-		{
 			name:    "empty diffs",
 			options: []FormatOption{Plain},
 			setupFn: func() DocDiffs {
@@ -249,56 +224,6 @@ func Test_formatFileDiffs(t *testing.T) {
 			fileDiffs := tt.setupFn()
 			formatter := newFormatter(tt.options...)
 			result := formatter.formatFileDiffs(fileDiffs)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func Test_countDiffs(t *testing.T) {
-	tests := []struct {
-		name     string
-		setupFn  func() DocDiffs
-		expected diffCount
-	}{
-		{
-			name: "mixed diff types",
-			setupFn: func() DocDiffs {
-				diff1 := createRealisticDiff(t, "name: Alice", "name: Bob") // modified
-				diff2 := createRealisticDiff(t, "age: 30", heredoc.Doc(`
-					age: 30
-					city: NYC
-				`)) // added
-				diff3 := createRealisticDiff(t, "status: active", "") // deleted
-				return DocDiffs{diff1, diff2, diff3}
-			},
-			expected: diffCount{added: 1, deleted: 1, modified: 1},
-		},
-		{
-			name: "empty diffs",
-			setupFn: func() DocDiffs {
-				return DocDiffs{}
-			},
-			expected: diffCount{added: 0, deleted: 0, modified: 0},
-		},
-		{
-			name: "only added",
-			setupFn: func() DocDiffs {
-				diff1 := createRealisticDiff(t, "", "name: Alice")
-				diff2 := createRealisticDiff(t, "age: 30", heredoc.Doc(`
-					age: 30
-					city: NYC
-				`))
-				return DocDiffs{diff1, diff2}
-			},
-			expected: diffCount{added: 2, deleted: 0, modified: 0},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			docDiffs := tt.setupFn()
-			formatter := newFormatter()
-			result := formatter.countDiffs(docDiffs)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -747,36 +672,6 @@ func Test_buildModifiedOutput(t *testing.T) {
 	}
 }
 
-func Test_diffCount_String(t *testing.T) {
-	tests := []struct {
-		name     string
-		count    diffCount
-		expected string
-	}{
-		{
-			name:     "all zeros",
-			count:    diffCount{added: 0, deleted: 0, modified: 0},
-			expected: "0 added, 0 deleted, 0 modified\n",
-		},
-		{
-			name:     "mixed counts",
-			count:    diffCount{added: 2, deleted: 1, modified: 3},
-			expected: "2 added, 1 deleted, 3 modified\n",
-		},
-		{
-			name:     "only added",
-			count:    diffCount{added: 5, deleted: 0, modified: 0},
-			expected: "5 added, 0 deleted, 0 modified\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.count.String()
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func Test_calculateIndentLevel(t *testing.T) {
 	tests := []struct {

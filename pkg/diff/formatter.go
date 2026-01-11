@@ -24,7 +24,6 @@ type formatOptions struct {
 	plain     bool // disables colored output
 	pathsOnly bool // only shows paths, no values
 	metadata  bool // includes additional metadata about values, it is mutually exclusive with pathsOnly
-	counts    bool // includes diff count summary
 }
 
 // FormatOption is a function that modifies format options
@@ -47,11 +46,6 @@ func PathsOnly(opts *formatOptions) {
 // If PathsOnly is set, this option will be ignored.
 func WithMetadata(opts *formatOptions) {
 	opts.metadata = true
-}
-
-// IncludeCounts includes diff count summary in the output
-func IncludeCounts(opts *formatOptions) {
-	opts.counts = true
 }
 
 // formatter handles the formatting of diffs
@@ -110,15 +104,7 @@ func (f *formatter) formatDocDiffs(diffs DocDiffs) string {
 	for _, diff := range diffs {
 		diffStrings = append(diffStrings, f.formatDiff(diff))
 	}
-
-	result := strings.Join(diffStrings, "\n")
-
-	if f.options.counts {
-		count := f.countDiffs(diffs)
-		result = count.String() + result
-	}
-
-	return result
+	return strings.Join(diffStrings, "\n")
 }
 
 // formatFileDiffs formats a collection of file diffs
@@ -128,22 +114,6 @@ func (f *formatter) formatFileDiffs(fileDiffs FileDiffs) string {
 		docDiffStrings = append(docDiffStrings, f.formatDocDiffs(docDiffs))
 	}
 	return strings.Join(docDiffStrings, "\n---\n")
-}
-
-// countDiffs counts the number of each type of diff
-func (f *formatter) countDiffs(diffs DocDiffs) diffCount {
-	var count diffCount
-	for _, diff := range diffs {
-		switch diff.Type() {
-		case Added:
-			count.added++
-		case Deleted:
-			count.deleted++
-		case Modified:
-			count.modified++
-		}
-	}
-	return count
 }
 
 // formatValueYaml formats a value for YAML, applying color if not in plain mode
@@ -296,18 +266,6 @@ func (f *formatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbo
 		return fmt.Sprintf("%s %s: %s %s %s %s %s", sign, path, leftMetadata, leftValue, symbol, rightMetadata, rightValue)
 	}
 	return fmt.Sprintf("%s %s: %s %s %s", sign, path, leftValue, symbol, rightValue)
-}
-
-// diffCount tracks the count of different types of diffs
-type diffCount struct {
-	added    int
-	deleted  int
-	modified int
-}
-
-// String returns a string representation of the diff count
-func (dc *diffCount) String() string {
-	return fmt.Sprintf("%d added, %d deleted, %d modified\n", dc.added, dc.deleted, dc.modified)
 }
 
 // getNodePath extracts the YAML path from a node

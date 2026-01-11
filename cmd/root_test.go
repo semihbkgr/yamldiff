@@ -22,14 +22,14 @@ func TestNewConfig(t *testing.T) {
 	if cfg.color != "auto" {
 		t.Errorf("expected color to be 'auto', got %s", cfg.color)
 	}
-	if cfg.pathsOnly != false {
-		t.Errorf("expected pathsOnly to be false, got %v", cfg.pathsOnly)
+	if cfg.pathOnly != false {
+		t.Errorf("expected pathOnly to be false, got %v", cfg.pathOnly)
 	}
 	if cfg.metadata != false {
 		t.Errorf("expected metadata to be false, got %v", cfg.metadata)
 	}
-	if cfg.counts != false {
-		t.Errorf("expected counts to be false, got %v", cfg.counts)
+	if cfg.stat != false {
+		t.Errorf("expected stat to be false, got %v", cfg.stat)
 	}
 }
 
@@ -93,26 +93,26 @@ func TestConfigFormatOptions(t *testing.T) {
 	tests := []struct {
 		name         string
 		color        string
-		pathsOnly    bool
+		pathOnly    bool
 		metadata     bool
-		counts       bool
+		stat         bool
 		expectedOpts int
 	}{
 		{"no options", "always", false, false, false, 0},
 		{"plain only", "never", false, false, false, 1},
 		{"paths only", "always", true, false, false, 1},
 		{"metadata only", "always", false, true, false, 1},
-		{"counts only", "always", false, false, true, 1},
-		{"all options", "never", true, true, true, 4},
+		{"stat only", "always", false, false, true, 0}, // stat is handled separately, not as FormatOption
+		{"all options", "never", true, true, true, 3},  // stat not included in FormatOptions
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config{
 				color:     tt.color,
-				pathsOnly: tt.pathsOnly,
+				pathOnly: tt.pathOnly,
 				metadata:  tt.metadata,
-				counts:    tt.counts,
+				stat:      tt.stat,
 			}
 			opts := cfg.formatOptions()
 
@@ -156,33 +156,33 @@ func TestConfigValidateColorFlag(t *testing.T) {
 
 func TestConfigValidateMutuallyExclusiveFlags(t *testing.T) {
 	tests := []struct {
-		name      string
-		pathsOnly bool
-		metadata  bool
-		wantErr   bool
+		name     string
+		pathOnly bool
+		metadata bool
+		stat     bool
+		wantErr  bool
 	}{
-		{"no flags", false, false, false},
-		{"paths only", true, false, false},
-		{"metadata only", false, true, false},
-		{"both flags", true, true, true},
+		{"no flags", false, false, false, false},
+		{"path only", true, false, false, false},
+		{"metadata only", false, true, false, false},
+		{"stat only", false, false, true, false},
+		{"path-only and metadata", true, true, false, true},
+		{"stat and path-only", false, true, true, true},
+		{"stat and metadata", true, false, true, true},
+		{"all flags", true, true, true, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config{
-				pathsOnly: tt.pathsOnly,
-				metadata:  tt.metadata,
+				pathOnly: tt.pathOnly,
+				metadata: tt.metadata,
+				stat:     tt.stat,
 			}
 			err := cfg.validateMutuallyExclusiveFlags()
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateMutuallyExclusiveFlags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			if tt.wantErr && err != nil {
-				if !strings.Contains(err.Error(), "mutually exclusive") {
-					t.Errorf("validateMutuallyExclusiveFlags() error = %v, expected error to contain 'mutually exclusive'", err)
-				}
 			}
 		})
 	}
@@ -216,7 +216,7 @@ func TestNewRootCommand(t *testing.T) {
 	}
 
 	// Check that all expected flags are present
-	expectedFlags := []string{"exit-code", "ignore-order", "color", "paths-only", "metadata", "counts"}
+	expectedFlags := []string{"exit-code", "ignore-order", "color", "path-only", "metadata", "stat"}
 	for _, flagName := range expectedFlags {
 		flag := cmd.Flags().Lookup(flagName)
 		if flag == nil {
@@ -278,7 +278,7 @@ func TestRunCommandWithMutuallyExclusiveFlags(t *testing.T) {
 	// Set mutually exclusive flags
 	cfg := &config{
 		color:     "auto",
-		pathsOnly: true,
+		pathOnly: true,
 		metadata:  true,
 	}
 

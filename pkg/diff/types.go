@@ -11,6 +11,20 @@ const (
 	Modified
 )
 
+// String returns the string representation of the DiffType
+func (dt DiffType) String() string {
+	switch dt {
+	case Added:
+		return "Added"
+	case Deleted:
+		return "Deleted"
+	case Modified:
+		return "Modified"
+	default:
+		return "Unknown"
+	}
+}
+
 // Diff represents a single difference between two YAML nodes
 type Diff struct {
 	leftNode  ast.Node

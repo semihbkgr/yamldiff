@@ -16,9 +16,9 @@ type config struct {
 	exitOnDifference bool
 	ignoreSeqOrder   bool
 	color            string
-	pathsOnly        bool
+	pathOnly         bool
 	metadata         bool
-	counts           bool
+	stat             bool
 }
 
 // newConfig creates a new config with default values
@@ -27,9 +27,9 @@ func newConfig() *config {
 		exitOnDifference: false,
 		ignoreSeqOrder:   false,
 		color:            "auto",
-		pathsOnly:        false,
+		pathOnly:         false,
 		metadata:         false,
-		counts:           false,
+		stat:             false,
 	}
 }
 
@@ -62,14 +62,11 @@ func (c *config) formatOptions() []diff.FormatOption {
 	if !c.shouldUseColor() {
 		opts = append(opts, diff.Plain)
 	}
-	if c.pathsOnly {
+	if c.pathOnly {
 		opts = append(opts, diff.PathsOnly)
 	}
 	if c.metadata {
 		opts = append(opts, diff.WithMetadata)
-	}
-	if c.counts {
-		opts = append(opts, diff.IncludeCounts)
 	}
 	return opts
 }
@@ -86,8 +83,11 @@ func (c *config) validateColorFlag() error {
 
 // validateMutuallyExclusiveFlags checks for mutually exclusive flags
 func (c *config) validateMutuallyExclusiveFlags() error {
-	if c.pathsOnly && c.metadata {
-		return errors.New("flags --paths-only and --metadata are mutually exclusive")
+	if c.pathOnly && c.metadata {
+		return errors.New("flags --path-only and --metadata are mutually exclusive")
+	}
+	if c.stat && (c.pathOnly || c.metadata) {
+		return errors.New("flag --stat cannot be used with --path-only or --metadata")
 	}
 	return nil
 }
@@ -112,9 +112,9 @@ func newRootCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&cfg.exitOnDifference, "exit-code", "e", cfg.exitOnDifference, "Exit with non-zero status code when differences are found")
 	cmd.Flags().BoolVarP(&cfg.ignoreSeqOrder, "ignore-order", "i", cfg.ignoreSeqOrder, "Ignore sequence order when comparing")
 	cmd.Flags().StringVar(&cfg.color, "color", cfg.color, "When to use color output. It can be one of always, never, or auto.")
-	cmd.Flags().BoolVarP(&cfg.pathsOnly, "paths-only", "p", cfg.pathsOnly, "Show only paths of differences without displaying the values")
-	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include additional metadata such as line numbers and node types in the output. (mutually exclusive with --paths-only)")
-	cmd.Flags().BoolVarP(&cfg.counts, "counts", "c", cfg.counts, "Display a summary count of total added, deleted, and modified items")
+	cmd.Flags().BoolVarP(&cfg.pathOnly, "path-only", "p", cfg.pathOnly, "Show only paths of differences without values")
+	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include line numbers and node types (mutually exclusive with --path-only)")
+	cmd.Flags().BoolVarP(&cfg.stat, "stat", "s", cfg.stat, "Show only diffstat summary (added, deleted, modified counts)")
 
 	return cmd
 }
@@ -134,7 +134,13 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 		return fmt.Errorf("failed to compare files: %w", err)
 	}
 
-	output := diffs.Format(cfg.formatOptions()...)
+	var output string
+	if cfg.stat {
+		output = formatStat(diffs)
+	} else {
+		output = diffs.Format(cfg.formatOptions()...)
+	}
+
 	if output != "" {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", output)
 	}
@@ -144,6 +150,24 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 	}
 
 	return nil
+}
+
+// formatStat returns a summary line with diff statistics
+func formatStat(diffs diff.FileDiffs) string {
+	var added, deleted, modified int
+	for _, docDiffs := range diffs {
+		for _, d := range docDiffs {
+			switch d.Type() {
+			case diff.Added:
+				added++
+			case diff.Deleted:
+				deleted++
+			case diff.Modified:
+				modified++
+			}
+		}
+	}
+	return fmt.Sprintf("%d added, %d deleted, %d modified", added, deleted, modified)
 }
 
 // Execute runs the root command

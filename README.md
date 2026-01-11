@@ -12,7 +12,7 @@
 
 - **Structural comparison** - Detects changes in YAML data structure, layout, and values
 - **Rich visual output** - Colored diff display with customizable formatting  
-- **Flexible reporting** - Detailed diffs, paths-only view, summary counts, or metadata including line numbers and value types
+- **Flexible reporting** - Detailed diffs, path-only view, diffstat summary, or metadata including line numbers and value types
 - **Library support** - Import as a Go module for programmatic use
 
 ## Installation
@@ -47,12 +47,12 @@ Usage:
 
 Flags:
       --color string   When to use color output. It can be one of always, never, or auto. (default "auto")
-  -c, --counts         Display a summary count of total added, deleted, and modified items
   -e, --exit-code      Exit with non-zero status code when differences are found
   -h, --help           help for yamldiff
   -i, --ignore-order   Ignore sequence order when comparing
-  -m, --metadata       Include additional metadata such as line numbers and node types in the output. (mutually exclusive with --paths-only)
-  -p, --paths-only     Show only paths of differences without displaying the values
+  -m, --metadata       Include line numbers and node types (mutually exclusive with --path-only)
+  -p, --path-only      Show only paths of differences without values
+  -s, --stat           Show only diffstat summary (added, deleted, modified counts)
   -v, --version        version for yamldiff
 ```
 
@@ -66,10 +66,10 @@ yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
 
 ![example-metadata](images/example-metadata.png)
 
-### Paths-Only View with Summary
+### Path-Only View
 
 ```bash
-yamldiff --paths-only --counts examples/pod-v1.yaml examples/pod-v2.yaml
+yamldiff --path-only examples/pod-v1.yaml examples/pod-v2.yaml
 ```
 
 ![example-paths-only](images/example-pathsOnly.png)
@@ -80,8 +80,8 @@ yamldiff --paths-only --counts examples/pod-v1.yaml examples/pod-v2.yaml
 # Ignore sequence order when comparing arrays
 $ yamldiff --ignore-order config1.yaml config2.yaml
 
-# Get only a summary count of differences
-$ yamldiff --counts deployment-old.yaml deployment-new.yaml
+# Show only diffstat summary (no diff details)
+$ yamldiff --stat deployment-old.yaml deployment-new.yaml
 
 # Exit with non-zero code if differences found (useful for CI/CD)
 $ yamldiff --exit-code expected.yaml actual.yaml

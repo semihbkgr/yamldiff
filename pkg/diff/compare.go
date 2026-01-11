@@ -93,8 +93,15 @@ func compareNodes(ln, rn ast.Node, options *compareOptions) []*Diff {
 
 	// Handle all value types from the YAML AST.
 	// Note: Structural types (DocumentType, MappingKeyType, MappingValueType, SequenceEntryType,
-	// MergeKeyType, UnknownNodeType) are handled through recursive traversal of their parent
-	// collection types (MappingType, SequenceType) and don't need explicit comparison here.
+	// UnknownNodeType) are handled through recursive traversal of their parent collection types
+	// (MappingType, SequenceType) and don't need explicit comparison here.
+	//
+	// Known limitations (intentionally not supported):
+	// - AnchorType, AliasType, MergeKeyType: YAML anchors (&), aliases (*), and merge keys (<<)
+	//   are treated as equal if both sides have them, regardless of their values. Future versions
+	//   may add deep comparison of anchor/alias references.
+	// - DirectiveType, TagType: YAML directives and type tags are metadata, not compared
+	// - CommentType, CommentGroupType: Comments are not preserved in structural comparison
 	switch ln.Type() {
 	case ast.MappingType:
 		return compareMappingNodes(ln.(*ast.MappingNode), rn.(*ast.MappingNode), options)
