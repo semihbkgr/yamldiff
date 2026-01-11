@@ -97,6 +97,15 @@ go install github.com/semihbkgr/yamldiff@latest
 3. **CLI flags** - Add to `cmd/root.go`
 4. **Always add tests** - Include unit tests in corresponding `*_test.go` files
 
+### After Each Code Change
+
+Always run these commands after making code changes:
+
+```bash
+go fmt ./...
+golangci-lint run ./...
+```
+
 ### Testing Changes
 
 - Run tests before committing: `go test ./...`

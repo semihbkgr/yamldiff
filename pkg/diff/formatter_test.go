@@ -672,7 +672,6 @@ func Test_buildModifiedOutput(t *testing.T) {
 	}
 }
 
-
 func Test_calculateIndentLevel(t *testing.T) {
 	tests := []struct {
 		name     string

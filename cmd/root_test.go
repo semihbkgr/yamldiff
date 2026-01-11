@@ -93,7 +93,7 @@ func TestConfigFormatOptions(t *testing.T) {
 	tests := []struct {
 		name         string
 		color        string
-		pathOnly    bool
+		pathOnly     bool
 		metadata     bool
 		stat         bool
 		expectedOpts int
@@ -109,10 +109,10 @@ func TestConfigFormatOptions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config{
-				color:     tt.color,
+				color:    tt.color,
 				pathOnly: tt.pathOnly,
-				metadata:  tt.metadata,
-				stat:      tt.stat,
+				metadata: tt.metadata,
+				stat:     tt.stat,
 			}
 			opts := cfg.formatOptions()
 
@@ -277,9 +277,9 @@ func TestRunCommandWithMutuallyExclusiveFlags(t *testing.T) {
 
 	// Set mutually exclusive flags
 	cfg := &config{
-		color:     "auto",
+		color:    "auto",
 		pathOnly: true,
-		metadata:  true,
+		metadata: true,
 	}
 
 	err := runCommand(cmd, []string{"file1.yaml", "file2.yaml"}, cfg)

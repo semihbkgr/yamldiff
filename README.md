@@ -66,14 +66,6 @@ yamldiff --metadata examples/pod-v1.yaml examples/pod-v2.yaml
 
 ![example-metadata](images/example-metadata.png)
 
-### Path-Only View
-
-```bash
-yamldiff --path-only examples/pod-v1.yaml examples/pod-v2.yaml
-```
-
-![example-paths-only](images/example-pathsOnly.png)
-
 ### Additional Examples
 
 ```bash

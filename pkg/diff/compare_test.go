@@ -349,31 +349,6 @@ func TestCompareMultiDocsUnmatchedDocumentNumber(t *testing.T) {
 	}
 }
 
-func ExampleCompare() {
-	left := []byte(`
-name: Alice
-city: New York
-items:
-    - foo
-    - bar
-`)
-
-	right := []byte(`
-name: Bob
-age: 30
-items:
-    - foo
-    - baz
-`)
-
-	diffs, err := Compare(left, right)
-	if err != nil {
-		panic(err)
-	}
-
-	_ = diffs
-}
-
 func Test_compareNodesScalarTypes(t *testing.T) {
 	tests := []struct {
 		name         string
