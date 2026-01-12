@@ -1,6 +1,8 @@
 package diff
 
-import "github.com/goccy/go-yaml/ast"
+import (
+	"github.com/goccy/go-yaml/ast"
+)
 
 // DiffType represents the type of change in a diff
 type DiffType int
@@ -141,4 +143,9 @@ func (f FileDiffs) HasDiff() bool {
 func (f FileDiffs) Format(opts ...FormatOption) string {
 	formatter := newFormatter(opts...)
 	return formatter.formatFileDiffs(f)
+}
+
+// FormatUnified formats the file diffs in unified diff style showing the full document
+func (f FileDiffs) FormatUnified(leftAST, rightAST *ast.File, opts ...UnifiedOption) string {
+	return FormatUnified(leftAST, rightAST, f, opts...)
 }

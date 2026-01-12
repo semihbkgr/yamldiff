@@ -31,6 +31,9 @@ func TestNewConfig(t *testing.T) {
 	if cfg.stat != false {
 		t.Errorf("expected stat to be false, got %v", cfg.stat)
 	}
+	if cfg.list != false {
+		t.Errorf("expected list to be false, got %v", cfg.list)
+	}
 }
 
 func TestConfigShouldUseColor(t *testing.T) {
@@ -157,24 +160,29 @@ func TestConfigValidateColorFlag(t *testing.T) {
 func TestConfigValidateMutuallyExclusiveFlags(t *testing.T) {
 	tests := []struct {
 		name     string
+		list     bool
 		pathOnly bool
 		metadata bool
 		stat     bool
 		wantErr  bool
 	}{
-		{"no flags", false, false, false, false},
-		{"path only", true, false, false, false},
-		{"metadata only", false, true, false, false},
-		{"stat only", false, false, true, false},
-		{"path-only and metadata", true, true, false, true},
-		{"stat and path-only", false, true, true, true},
-		{"stat and metadata", true, false, true, true},
-		{"all flags", true, true, true, true},
+		{"no flags", false, false, false, false, false},
+		{"list only", true, false, false, false, false},
+		{"stat only", false, false, false, true, false},
+		{"list with path-only", true, true, false, false, false},
+		{"list with metadata", true, false, true, false, false},
+		{"path-only without list", false, true, false, false, true},
+		{"metadata without list", false, false, true, false, true},
+		{"list with path-only and metadata", true, true, true, false, true},
+		{"stat and path-only with list", true, true, false, true, true},
+		{"stat and metadata with list", true, false, true, true, true},
+		{"all flags with list", true, true, true, true, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config{
+				list:     tt.list,
 				pathOnly: tt.pathOnly,
 				metadata: tt.metadata,
 				stat:     tt.stat,
@@ -216,7 +224,7 @@ func TestNewRootCommand(t *testing.T) {
 	}
 
 	// Check that all expected flags are present
-	expectedFlags := []string{"exit-code", "ignore-order", "color", "path-only", "metadata", "stat"}
+	expectedFlags := []string{"exit-code", "ignore-order", "color", "list", "path-only", "metadata", "stat"}
 	for _, flagName := range expectedFlags {
 		flag := cmd.Flags().Lookup(flagName)
 		if flag == nil {
@@ -275,9 +283,10 @@ func TestRunCommandWithMutuallyExclusiveFlags(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 
-	// Set mutually exclusive flags
+	// Set mutually exclusive flags (path-only and metadata both set with list)
 	cfg := &config{
 		color:    "auto",
+		list:     true,
 		pathOnly: true,
 		metadata: true,
 	}

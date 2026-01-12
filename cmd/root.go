@@ -19,6 +19,7 @@ type config struct {
 	pathOnly         bool
 	metadata         bool
 	stat             bool
+	list             bool // use list format (original behavior) instead of unified
 }
 
 // newConfig creates a new config with default values
@@ -30,6 +31,7 @@ func newConfig() *config {
 		pathOnly:         false,
 		metadata:         false,
 		stat:             false,
+		list:             false,
 	}
 }
 
@@ -89,7 +91,20 @@ func (c *config) validateMutuallyExclusiveFlags() error {
 	if c.stat && (c.pathOnly || c.metadata) {
 		return errors.New("flag --stat cannot be used with --path-only or --metadata")
 	}
+	// --metadata and --path-only only work with --list format
+	if !c.list && (c.metadata || c.pathOnly) {
+		return errors.New("flags --metadata and --path-only require --list flag")
+	}
 	return nil
+}
+
+// unifiedOptions converts config to diff.UnifiedOption slice
+func (c *config) unifiedOptions() []diff.UnifiedOption {
+	var opts []diff.UnifiedOption
+	if !c.shouldUseColor() {
+		opts = append(opts, diff.UnifiedPlain)
+	}
+	return opts
 }
 
 // newRootCommand creates the root cobra command
@@ -112,8 +127,9 @@ func newRootCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&cfg.exitOnDifference, "exit-code", "e", cfg.exitOnDifference, "Exit with non-zero status code when differences are found")
 	cmd.Flags().BoolVarP(&cfg.ignoreSeqOrder, "ignore-order", "i", cfg.ignoreSeqOrder, "Ignore sequence order when comparing")
 	cmd.Flags().StringVar(&cfg.color, "color", cfg.color, "When to use color output. It can be one of always, never, or auto.")
-	cmd.Flags().BoolVarP(&cfg.pathOnly, "path-only", "p", cfg.pathOnly, "Show only paths of differences without values")
-	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include line numbers and node types (mutually exclusive with --path-only)")
+	cmd.Flags().BoolVarP(&cfg.list, "list", "l", cfg.list, "Use list format showing paths and values (original behavior)")
+	cmd.Flags().BoolVarP(&cfg.pathOnly, "path-only", "p", cfg.pathOnly, "Show only paths of differences without values (requires --list)")
+	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include line numbers and node types (requires --list)")
 	cmd.Flags().BoolVarP(&cfg.stat, "stat", "s", cfg.stat, "Show only diffstat summary (added, deleted, modified counts)")
 
 	return cmd
@@ -129,23 +145,40 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 		return err
 	}
 
-	diffs, err := diff.CompareFile(args[0], args[1], cfg.compareOptions()...)
-	if err != nil {
-		return fmt.Errorf("failed to compare files: %w", err)
-	}
-
 	var output string
-	if cfg.stat {
-		output = formatStat(diffs)
+	var hasDiff bool
+
+	if cfg.list || cfg.stat {
+		// Use original comparison for list format or stat
+		diffs, err := diff.CompareFile(args[0], args[1], cfg.compareOptions()...)
+		if err != nil {
+			return fmt.Errorf("failed to compare files: %w", err)
+		}
+		hasDiff = diffs.HasDiff()
+
+		if cfg.stat {
+			output = formatStat(diffs)
+		} else {
+			output = diffs.Format(cfg.formatOptions()...)
+		}
 	} else {
-		output = diffs.Format(cfg.formatOptions()...)
+		// Use unified format (default)
+		result, err := diff.CompareFileWithAST(args[0], args[1], cfg.compareOptions()...)
+		if err != nil {
+			return fmt.Errorf("failed to compare files: %w", err)
+		}
+		hasDiff = result.Diffs.HasDiff()
+
+		if hasDiff {
+			output = result.Diffs.FormatUnified(result.LeftAST, result.RightAST, cfg.unifiedOptions()...)
+		}
 	}
 
 	if output != "" {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", output)
 	}
 
-	if cfg.exitOnDifference && diffs.HasDiff() {
+	if cfg.exitOnDifference && hasDiff {
 		return errors.New("differences found between yaml files")
 	}
 

@@ -47,6 +47,33 @@ func CompareFile(leftFile string, rightFile string, opts ...CompareOption) (File
 	return CompareAst(leftAst, rightAst, opts...), nil
 }
 
+// CompareResult holds comparison results including AST references for unified formatting
+type CompareResult struct {
+	Diffs    FileDiffs
+	LeftAST  *ast.File
+	RightAST *ast.File
+}
+
+// CompareFileWithAST compares two yaml files and returns results with AST access for unified formatting.
+func CompareFileWithAST(leftFile string, rightFile string, opts ...CompareOption) (*CompareResult, error) {
+	leftAst, err := parser.ParseFile(leftFile, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	rightAst, err := parser.ParseFile(rightFile, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	diffs := CompareAst(leftAst, rightAst, opts...)
+	return &CompareResult{
+		Diffs:    diffs,
+		LeftAST:  leftAst,
+		RightAST: rightAst,
+	}, nil
+}
+
 // CompareAst compares two yaml documents represented as ASTs and returns the differences as FileDiffs.
 func CompareAst(left *ast.File, right *ast.File, opts ...CompareOption) FileDiffs {
 	options := &compareOptions{}
