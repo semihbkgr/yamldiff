@@ -15,9 +15,9 @@ func IgnoreSeqOrder(o *compareOptions) {
 	o.ignoreSeqOrder = true
 }
 
-// Compare compares two yaml provided as bytes and returns the differences as FileDiffs,
+// Compare compares two yaml provided as bytes and returns a CompareResult,
 // or an error if there's an issue parsing the files.
-func Compare(left []byte, right []byte, opts ...CompareOption) (FileDiffs, error) {
+func Compare(left []byte, right []byte, opts ...CompareOption) (*CompareResult, error) {
 	leftAst, err := parser.ParseBytes(left, 0)
 	if err != nil {
 		return nil, err
@@ -31,9 +31,9 @@ func Compare(left []byte, right []byte, opts ...CompareOption) (FileDiffs, error
 	return CompareAst(leftAst, rightAst, opts...), nil
 }
 
-// CompareFile compares two yaml files specified by file paths and returns the differences as FileDiffs,
+// CompareFile compares two yaml files specified by file paths and returns a CompareResult,
 // or an error if there's an issue reading or parsing the files.
-func CompareFile(leftFile string, rightFile string, opts ...CompareOption) (FileDiffs, error) {
+func CompareFile(leftFile string, rightFile string, opts ...CompareOption) (*CompareResult, error) {
 	leftAst, err := parser.ParseFile(leftFile, 0)
 	if err != nil {
 		return nil, err
@@ -47,8 +47,8 @@ func CompareFile(leftFile string, rightFile string, opts ...CompareOption) (File
 	return CompareAst(leftAst, rightAst, opts...), nil
 }
 
-// CompareAst compares two yaml documents represented as ASTs and returns the differences as FileDiffs.
-func CompareAst(left *ast.File, right *ast.File, opts ...CompareOption) FileDiffs {
+// CompareAst compares two yaml documents represented as ASTs and returns a CompareResult.
+func CompareAst(left *ast.File, right *ast.File, opts ...CompareOption) *CompareResult {
 	options := &compareOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -67,7 +67,11 @@ func CompareAst(left *ast.File, right *ast.File, opts ...CompareOption) FileDiff
 		sort.Sort(docDiff)
 		docDiffs[i] = docDiff
 	}
-	return docDiffs
+	return &CompareResult{
+		LeftAST:  left,
+		RightAST: right,
+		Diffs:    docDiffs,
+	}
 }
 
 type compareOptions struct {

@@ -2,6 +2,19 @@ package diff
 
 import "github.com/goccy/go-yaml/ast"
 
+// CompareResult holds the complete comparison result including
+// the original ASTs needed for unified diff rendering
+type CompareResult struct {
+	LeftAST  *ast.File
+	RightAST *ast.File
+	Diffs    FileDiffs
+}
+
+// HasDiff returns true if there are any differences
+func (cr *CompareResult) HasDiff() bool {
+	return cr.Diffs.HasDiff()
+}
+
 // DiffType represents the type of change in a diff
 type DiffType int
 
@@ -54,9 +67,9 @@ func (d *Diff) Type() DiffType {
 func (d *Diff) Path() string {
 	switch d.Type() {
 	case Added:
-		return getNodePath(d.rightNode)
+		return GetNodePath(d.rightNode)
 	default:
-		return getNodePath(d.leftNode)
+		return GetNodePath(d.leftNode)
 	}
 }
 
@@ -70,10 +83,16 @@ func (d *Diff) RightNode() ast.Node {
 	return d.rightNode
 }
 
-// Format formats the diff using the provided options
-func (d *Diff) Format(opts ...FormatOption) string {
-	formatter := newFormatter(opts...)
-	return formatter.formatDiff(d)
+// GetNodePath extracts the YAML path from a node
+func GetNodePath(node ast.Node) string {
+	if node == nil {
+		return ""
+	}
+	path := node.GetPath()
+	if len(path) > 0 && path[0] == '$' {
+		return path[1:] // remove leading dollar sign
+	}
+	return path
 }
 
 // DocDiffs represents a collection of diffs for a single YAML document
@@ -118,12 +137,6 @@ func (d DocDiffs) Less(i, j int) bool {
 	return typeA > typeB
 }
 
-// Format formats the document diffs using the provided options
-func (d DocDiffs) Format(opts ...FormatOption) string {
-	formatter := newFormatter(opts...)
-	return formatter.formatDocDiffs(d)
-}
-
 // FileDiffs represents diffs for multiple YAML documents in a file
 type FileDiffs []DocDiffs
 
@@ -135,10 +148,4 @@ func (f FileDiffs) HasDiff() bool {
 		}
 	}
 	return false
-}
-
-// Format formats the file diffs using the provided options
-func (f FileDiffs) Format(opts ...FormatOption) string {
-	formatter := newFormatter(opts...)
-	return formatter.formatFileDiffs(f)
 }

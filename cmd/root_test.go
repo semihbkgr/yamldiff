@@ -31,6 +31,9 @@ func TestNewConfig(t *testing.T) {
 	if cfg.stat != false {
 		t.Errorf("expected stat to be false, got %v", cfg.stat)
 	}
+	if cfg.list != false {
+		t.Errorf("expected list to be false, got %v", cfg.list)
+	}
 }
 
 func TestConfigShouldUseColor(t *testing.T) {
@@ -89,21 +92,19 @@ func TestConfigCompareOptions(t *testing.T) {
 	}
 }
 
-func TestConfigFormatOptions(t *testing.T) {
+func TestConfigListOptions(t *testing.T) {
 	tests := []struct {
 		name         string
 		color        string
 		pathOnly     bool
 		metadata     bool
-		stat         bool
 		expectedOpts int
 	}{
-		{"no options", "always", false, false, false, 0},
-		{"plain only", "never", false, false, false, 1},
-		{"paths only", "always", true, false, false, 1},
-		{"metadata only", "always", false, true, false, 1},
-		{"stat only", "always", false, false, true, 0}, // stat is handled separately, not as FormatOption
-		{"all options", "never", true, true, true, 3},  // stat not included in FormatOptions
+		{"no options", "always", false, false, 0},
+		{"plain only", "never", false, false, 1},
+		{"paths only", "always", true, false, 1},
+		{"metadata only", "always", false, true, 1},
+		{"all options", "never", true, true, 3},
 	}
 
 	for _, tt := range tests {
@@ -112,12 +113,33 @@ func TestConfigFormatOptions(t *testing.T) {
 				color:    tt.color,
 				pathOnly: tt.pathOnly,
 				metadata: tt.metadata,
-				stat:     tt.stat,
 			}
-			opts := cfg.formatOptions()
+			opts := cfg.listOptions()
 
 			if len(opts) != tt.expectedOpts {
-				t.Errorf("formatOptions() returned %d options, want %d", len(opts), tt.expectedOpts)
+				t.Errorf("listOptions() returned %d options, want %d", len(opts), tt.expectedOpts)
+			}
+		})
+	}
+}
+
+func TestConfigUnifiedOptions(t *testing.T) {
+	tests := []struct {
+		name         string
+		color        string
+		expectedOpts int
+	}{
+		{"with color", "always", 0},
+		{"without color", "never", 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config{color: tt.color}
+			opts := cfg.unifiedOptions()
+
+			if len(opts) != tt.expectedOpts {
+				t.Errorf("unifiedOptions() returned %d options, want %d", len(opts), tt.expectedOpts)
 			}
 		})
 	}
@@ -160,16 +182,20 @@ func TestConfigValidateMutuallyExclusiveFlags(t *testing.T) {
 		pathOnly bool
 		metadata bool
 		stat     bool
+		list     bool
 		wantErr  bool
 	}{
-		{"no flags", false, false, false, false},
-		{"path only", true, false, false, false},
-		{"metadata only", false, true, false, false},
-		{"stat only", false, false, true, false},
-		{"path-only and metadata", true, true, false, true},
-		{"stat and path-only", false, true, true, true},
-		{"stat and metadata", true, false, true, true},
-		{"all flags", true, true, true, true},
+		{"no flags", false, false, false, false, false},
+		{"list only", false, false, false, true, false},
+		{"path only without list", true, false, false, false, true},
+		{"metadata only without list", false, true, false, false, true},
+		{"path only with list", true, false, false, true, false},
+		{"metadata only with list", false, true, false, true, false},
+		{"stat only", false, false, true, false, false},
+		{"path-only and metadata with list", true, true, false, true, true},
+		{"stat and path-only", false, true, true, true, true},
+		{"stat and metadata", true, false, true, true, true},
+		{"all flags", true, true, true, true, true},
 	}
 
 	for _, tt := range tests {
@@ -178,6 +204,7 @@ func TestConfigValidateMutuallyExclusiveFlags(t *testing.T) {
 				pathOnly: tt.pathOnly,
 				metadata: tt.metadata,
 				stat:     tt.stat,
+				list:     tt.list,
 			}
 			err := cfg.validateMutuallyExclusiveFlags()
 
@@ -216,7 +243,7 @@ func TestNewRootCommand(t *testing.T) {
 	}
 
 	// Check that all expected flags are present
-	expectedFlags := []string{"exit-code", "ignore-order", "color", "path-only", "metadata", "stat"}
+	expectedFlags := []string{"exit-code", "ignore-order", "color", "path-only", "metadata", "stat", "list"}
 	for _, flagName := range expectedFlags {
 		flag := cmd.Flags().Lookup(flagName)
 		if flag == nil {
@@ -280,6 +307,7 @@ func TestRunCommandWithMutuallyExclusiveFlags(t *testing.T) {
 		color:    "auto",
 		pathOnly: true,
 		metadata: true,
+		list:     true,
 	}
 
 	err := runCommand(cmd, []string{"file1.yaml", "file2.yaml"}, cfg)
@@ -290,6 +318,29 @@ func TestRunCommandWithMutuallyExclusiveFlags(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "mutually exclusive") {
 		t.Errorf("expected error to contain 'mutually exclusive', got %v", err)
+	}
+}
+
+func TestRunCommandWithPathOnlyWithoutList(t *testing.T) {
+	cmd := newRootCommand()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	cfg := &config{
+		color:    "auto",
+		pathOnly: true,
+		list:     false,
+	}
+
+	err := runCommand(cmd, []string{"file1.yaml", "file2.yaml"}, cfg)
+
+	if err == nil {
+		t.Error("expected error for --path-only without --list")
+	}
+
+	if !strings.Contains(err.Error(), "require --list") {
+		t.Errorf("expected error to contain 'require --list', got %v", err)
 	}
 }
 
@@ -327,6 +378,45 @@ age: 25`
 	output := buf.String()
 	if !strings.Contains(output, "name") || !strings.Contains(output, "age") {
 		t.Errorf("expected output to contain diff information, got: %s", output)
+	}
+}
+
+func TestRunCommandWithListFlag(t *testing.T) {
+	// Create temporary test files
+	tmpDir := t.TempDir()
+	file1 := filepath.Join(tmpDir, "file1.yaml")
+	file2 := filepath.Join(tmpDir, "file2.yaml")
+
+	yaml1 := `name: Alice`
+	yaml2 := `name: Bob`
+
+	if err := os.WriteFile(file1, []byte(yaml1), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	if err := os.WriteFile(file2, []byte(yaml2), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	cmd := newRootCommand()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	cfg := &config{
+		color: "never",
+		list:  true,
+	}
+	err := runCommand(cmd, []string{file1, file2}, cfg)
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	// List format uses ~ for modifications and shows path
+	if !strings.Contains(output, "~") || !strings.Contains(output, ".name") {
+		t.Errorf("expected list format output with ~ and path, got: %s", output)
 	}
 }
 
@@ -401,10 +491,52 @@ age: 30`
 		t.Errorf("unexpected error when no differences: %v", err)
 	}
 
-	// Output should be empty or just whitespace when no differences
+	// Unified format shows the full document even with no differences
+	// But the output should not contain +/- prefixes indicating changes
+	output := buf.String()
+	if strings.Contains(output, "+ ") || strings.Contains(output, "- ") {
+		t.Errorf("expected no change markers when no differences, got: %s", output)
+	}
+}
+
+func TestRunCommandWithNoDifferencesListFormat(t *testing.T) {
+	// Create temporary test files with no differences
+	tmpDir := t.TempDir()
+	file1 := filepath.Join(tmpDir, "file1.yaml")
+	file2 := filepath.Join(tmpDir, "file2.yaml")
+
+	yaml := `name: Alice
+age: 30`
+
+	if err := os.WriteFile(file1, []byte(yaml), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	if err := os.WriteFile(file2, []byte(yaml), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	cmd := newRootCommand()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	cfg := &config{
+		exitOnDifference: true,
+		color:            "auto",
+		list:             true,
+	}
+
+	err := runCommand(cmd, []string{file1, file2}, cfg)
+
+	if err != nil {
+		t.Errorf("unexpected error when no differences: %v", err)
+	}
+
+	// List format should be empty when no differences
 	output := strings.TrimSpace(buf.String())
 	if output != "" {
-		t.Errorf("expected empty output when no differences, got: %s", output)
+		t.Errorf("expected empty output when no differences in list format, got: %s", output)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/semihbkgr/yamldiff/pkg/diff"
+	"github.com/semihbkgr/yamldiff/pkg/format"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +20,7 @@ type config struct {
 	pathOnly         bool
 	metadata         bool
 	stat             bool
+	list             bool
 }
 
 // newConfig creates a new config with default values
@@ -30,6 +32,7 @@ func newConfig() *config {
 		pathOnly:         false,
 		metadata:         false,
 		stat:             false,
+		list:             false,
 	}
 }
 
@@ -56,17 +59,26 @@ func (c *config) compareOptions() []diff.CompareOption {
 	return opts
 }
 
-// formatOptions converts config to diff.FormatOption slice
-func (c *config) formatOptions() []diff.FormatOption {
-	var opts []diff.FormatOption
+// listOptions converts config to format.ListOption slice
+func (c *config) listOptions() []format.ListOption {
+	var opts []format.ListOption
 	if !c.shouldUseColor() {
-		opts = append(opts, diff.Plain)
+		opts = append(opts, format.Plain)
 	}
 	if c.pathOnly {
-		opts = append(opts, diff.PathsOnly)
+		opts = append(opts, format.PathsOnly)
 	}
 	if c.metadata {
-		opts = append(opts, diff.WithMetadata)
+		opts = append(opts, format.WithMetadata)
+	}
+	return opts
+}
+
+// unifiedOptions converts config to format.UnifiedOption slice
+func (c *config) unifiedOptions() []format.UnifiedOption {
+	var opts []format.UnifiedOption
+	if !c.shouldUseColor() {
+		opts = append(opts, format.UnifiedPlain)
 	}
 	return opts
 }
@@ -88,6 +100,10 @@ func (c *config) validateMutuallyExclusiveFlags() error {
 	}
 	if c.stat && (c.pathOnly || c.metadata) {
 		return errors.New("flag --stat cannot be used with --path-only or --metadata")
+	}
+	// --path-only and --metadata only make sense with --list
+	if (c.pathOnly || c.metadata) && !c.list {
+		return errors.New("flags --path-only and --metadata require --list flag")
 	}
 	return nil
 }
@@ -112,8 +128,9 @@ func newRootCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&cfg.exitOnDifference, "exit-code", "e", cfg.exitOnDifference, "Exit with non-zero status code when differences are found")
 	cmd.Flags().BoolVarP(&cfg.ignoreSeqOrder, "ignore-order", "i", cfg.ignoreSeqOrder, "Ignore sequence order when comparing")
 	cmd.Flags().StringVar(&cfg.color, "color", cfg.color, "When to use color output. It can be one of always, never, or auto.")
-	cmd.Flags().BoolVarP(&cfg.pathOnly, "path-only", "p", cfg.pathOnly, "Show only paths of differences without values")
-	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include line numbers and node types (mutually exclusive with --path-only)")
+	cmd.Flags().BoolVarP(&cfg.list, "list", "l", cfg.list, "Show changes as a list instead of unified diff")
+	cmd.Flags().BoolVarP(&cfg.pathOnly, "path-only", "p", cfg.pathOnly, "Show only paths of differences without values (requires --list)")
+	cmd.Flags().BoolVarP(&cfg.metadata, "metadata", "m", cfg.metadata, "Include line numbers and node types (requires --list)")
 	cmd.Flags().BoolVarP(&cfg.stat, "stat", "s", cfg.stat, "Show only diffstat summary (added, deleted, modified counts)")
 
 	return cmd
@@ -129,23 +146,25 @@ func runCommand(cmd *cobra.Command, args []string, cfg *config) error {
 		return err
 	}
 
-	diffs, err := diff.CompareFile(args[0], args[1], cfg.compareOptions()...)
+	result, err := diff.CompareFile(args[0], args[1], cfg.compareOptions()...)
 	if err != nil {
 		return fmt.Errorf("failed to compare files: %w", err)
 	}
 
 	var output string
 	if cfg.stat {
-		output = formatStat(diffs)
+		output = formatStat(result.Diffs)
+	} else if cfg.list {
+		output = format.List(result.Diffs, cfg.listOptions()...)
 	} else {
-		output = diffs.Format(cfg.formatOptions()...)
+		output = format.Unified(result, cfg.unifiedOptions()...)
 	}
 
 	if output != "" {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", output)
 	}
 
-	if cfg.exitOnDifference && diffs.HasDiff() {
+	if cfg.exitOnDifference && result.HasDiff() {
 		return errors.New("differences found between yaml files")
 	}
 

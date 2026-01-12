@@ -66,12 +66,12 @@ func TestCompare(t *testing.T) {
 	left := readFile(t, "testdata/left.yaml")
 	right := readFile(t, "testdata/right.yaml")
 
-	diffs, err := Compare(left, right)
+	result, err := Compare(left, right)
 	require.NoError(t, err)
-	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], len(testFilesDiffPaths))
+	require.Len(t, result.Diffs, 1)
+	require.Len(t, result.Diffs[0], len(testFilesDiffPaths))
 
-	for i, diff := range diffs[0] {
+	for i, diff := range result.Diffs[0] {
 		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
 		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
 	}
@@ -81,11 +81,11 @@ func TestCompareMultiDocs(t *testing.T) {
 	left := readFile(t, "testdata/multi-docs-left.yaml")
 	right := readFile(t, "testdata/multi-docs-right.yaml")
 
-	diffs, err := Compare(left, right)
+	result, err := Compare(left, right)
 	require.NoError(t, err)
-	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+	require.Len(t, result.Diffs, len(testMultiDocsFilesDiffPath))
 
-	for i, docDiff := range diffs {
+	for i, docDiff := range result.Diffs {
 		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
 
 		for j, diff := range docDiff {
@@ -96,23 +96,23 @@ func TestCompareMultiDocs(t *testing.T) {
 }
 
 func TestCompareFile(t *testing.T) {
-	diffs, err := CompareFile("testdata/left.yaml", "testdata/right.yaml")
+	result, err := CompareFile("testdata/left.yaml", "testdata/right.yaml")
 	require.NoError(t, err)
-	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], len(testFilesDiffPaths))
+	require.Len(t, result.Diffs, 1)
+	require.Len(t, result.Diffs[0], len(testFilesDiffPaths))
 
-	for i, diff := range diffs[0] {
+	for i, diff := range result.Diffs[0] {
 		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
 		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
 	}
 }
 
 func TestCompareFileMultiDocs(t *testing.T) {
-	diffs, err := CompareFile("testdata/multi-docs-left.yaml", "testdata/multi-docs-right.yaml")
+	result, err := CompareFile("testdata/multi-docs-left.yaml", "testdata/multi-docs-right.yaml")
 	require.NoError(t, err)
-	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+	require.Len(t, result.Diffs, len(testMultiDocsFilesDiffPath))
 
-	for i, docDiff := range diffs {
+	for i, docDiff := range result.Diffs {
 		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
 
 		for j, diff := range docDiff {
@@ -139,11 +139,11 @@ func TestCompareAst(t *testing.T) {
 	rightAst, err := parser.ParseFile("testdata/right.yaml", 0)
 	require.NoError(t, err)
 
-	diffs := CompareAst(leftAst, rightAst)
-	require.Len(t, diffs, 1)
-	require.Len(t, diffs[0], len(testFilesDiffPaths))
+	result := CompareAst(leftAst, rightAst)
+	require.Len(t, result.Diffs, 1)
+	require.Len(t, result.Diffs[0], len(testFilesDiffPaths))
 
-	for i, diff := range diffs[0] {
+	for i, diff := range result.Diffs[0] {
 		require.Equal(t, diff.Path(), testFilesDiffPaths[i])
 		require.Equal(t, diff.Type(), testFilesPathDiffTypes[diff.Path()])
 	}
@@ -156,10 +156,10 @@ func TestCompareAstMultiDocs(t *testing.T) {
 	rightAst, err := parser.ParseFile("testdata/multi-docs-right.yaml", 0)
 	require.NoError(t, err)
 
-	diffs := CompareAst(leftAst, rightAst)
-	require.Len(t, diffs, len(testMultiDocsFilesDiffPath))
+	result := CompareAst(leftAst, rightAst)
+	require.Len(t, result.Diffs, len(testMultiDocsFilesDiffPath))
 
-	for i, docDiff := range diffs {
+	for i, docDiff := range result.Diffs {
 		require.Len(t, docDiff, len(testMultiDocsFilesDiffPath[i]))
 
 		for j, diff := range docDiff {
@@ -204,11 +204,11 @@ func TestCompareEmptyDocument(t *testing.T) {
 			left := []byte(tt.left)
 			right := []byte(tt.right)
 
-			fileDiffs, err := Compare(left, right)
+			result, err := Compare(left, right)
 			require.NoError(t, err)
 
-			require.Len(t, fileDiffs, 1)
-			docDiffs := fileDiffs[0]
+			require.Len(t, result.Diffs, 1)
+			docDiffs := result.Diffs[0]
 
 			if !tt.expectedDiff {
 				require.Empty(t, docDiffs)
@@ -326,12 +326,12 @@ func TestCompareMultiDocsUnmatchedDocumentNumber(t *testing.T) {
 			left := []byte(tt.left)
 			right := []byte(tt.right)
 
-			fileDiffs, err := Compare(left, right)
+			result, err := Compare(left, right)
 			require.NoError(t, err)
 
-			require.Len(t, fileDiffs, len(tt.expectedDiffs))
+			require.Len(t, result.Diffs, len(tt.expectedDiffs))
 
-			for i, docDiffs := range fileDiffs {
+			for i, docDiffs := range result.Diffs {
 				expectedDiffs := tt.expectedDiffs[i]
 				diffPathTypeMap := make(map[string]DiffType)
 				for _, diff := range docDiffs {

@@ -1,4 +1,4 @@
-package diff
+package format
 
 import (
 	"fmt"
@@ -6,8 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/lexer"
-	"github.com/goccy/go-yaml/printer"
+	"github.com/semihbkgr/yamldiff/pkg/diff"
 )
 
 const (
@@ -19,51 +18,51 @@ const (
 	continuationPrefix = 2
 )
 
-// formatOptions holds all formatting configuration
-type formatOptions struct {
+// ListOption is a function that modifies list format options
+type ListOption func(*listOptions)
+
+// listOptions holds all list formatting configuration
+type listOptions struct {
 	plain     bool // disables colored output
 	pathsOnly bool // only shows paths, no values
-	metadata  bool // includes additional metadata about values, it is mutually exclusive with pathsOnly
+	metadata  bool // includes additional metadata about values
 }
 
-// FormatOption is a function that modifies format options
-type FormatOption func(*formatOptions)
-
 // Plain disables color output and formats values as plain text
-func Plain(opts *formatOptions) {
+func Plain(opts *listOptions) {
 	opts.plain = true
 }
 
 // PathsOnly suppresses the display of values
 // It is mutually exclusive with WithMetadata
 // If this option is set, WithMetadata will be ignored.
-func PathsOnly(opts *formatOptions) {
+func PathsOnly(opts *listOptions) {
 	opts.pathsOnly = true
 }
 
 // WithMetadata includes additional metadata in the output
 // It is mutually exclusive with PathsOnly
 // If PathsOnly is set, this option will be ignored.
-func WithMetadata(opts *formatOptions) {
+func WithMetadata(opts *listOptions) {
 	opts.metadata = true
 }
 
-// formatter handles the formatting of diffs
-type formatter struct {
-	options       formatOptions
+// listFormatter handles the formatting of diffs as a list
+type listFormatter struct {
+	options       listOptions
 	colorAdded    *color.Color
 	colorDeleted  *color.Color
 	colorModified *color.Color
 	colorMetadata *color.Color
 }
 
-// newFormatter creates a new formatter with the given options
-func newFormatter(opts ...FormatOption) *formatter {
-	var options formatOptions
+// newListFormatter creates a new list formatter with the given options
+func newListFormatter(opts ...ListOption) *listFormatter {
+	var options listOptions
 	for _, opt := range opts {
 		opt(&options)
 	}
-	f := &formatter{
+	f := &listFormatter{
 		options:       options,
 		colorAdded:    color.New(color.FgHiGreen),
 		colorDeleted:  color.New(color.FgHiRed),
@@ -85,30 +84,14 @@ func newFormatter(opts ...FormatOption) *formatter {
 	return f
 }
 
-// FormatDiff formats a single diff
-func (f *formatter) formatDiff(diff *Diff) string {
-	switch diff.Type() {
-	case Added:
-		return f.formatAdded(diff)
-	case Deleted:
-		return f.formatDeleted(diff)
-	case Modified:
-		return f.formatModified(diff)
-	}
-	return ""
-}
-
-// formatDocDiffs formats a collection of document diffs
-func (f *formatter) formatDocDiffs(diffs DocDiffs) string {
-	diffStrings := make([]string, 0, len(diffs))
-	for _, diff := range diffs {
-		diffStrings = append(diffStrings, f.formatDiff(diff))
-	}
-	return strings.Join(diffStrings, "\n")
+// List formats diffs as a list of changes
+func List(diffs diff.FileDiffs, opts ...ListOption) string {
+	f := newListFormatter(opts...)
+	return f.formatFileDiffs(diffs)
 }
 
 // formatFileDiffs formats a collection of file diffs
-func (f *formatter) formatFileDiffs(fileDiffs FileDiffs) string {
+func (f *listFormatter) formatFileDiffs(fileDiffs diff.FileDiffs) string {
 	docDiffStrings := make([]string, 0, len(fileDiffs))
 	for _, docDiffs := range fileDiffs {
 		docDiffStrings = append(docDiffStrings, f.formatDocDiffs(docDiffs))
@@ -116,8 +99,30 @@ func (f *formatter) formatFileDiffs(fileDiffs FileDiffs) string {
 	return strings.Join(docDiffStrings, "\n---\n")
 }
 
+// formatDocDiffs formats a collection of document diffs
+func (f *listFormatter) formatDocDiffs(diffs diff.DocDiffs) string {
+	diffStrings := make([]string, 0, len(diffs))
+	for _, d := range diffs {
+		diffStrings = append(diffStrings, f.formatDiff(d))
+	}
+	return strings.Join(diffStrings, "\n")
+}
+
+// formatDiff formats a single diff
+func (f *listFormatter) formatDiff(d *diff.Diff) string {
+	switch d.Type() {
+	case diff.Added:
+		return f.formatAdded(d)
+	case diff.Deleted:
+		return f.formatDeleted(d)
+	case diff.Modified:
+		return f.formatModified(d)
+	}
+	return ""
+}
+
 // formatValueYaml formats a value for YAML, applying color if not in plain mode
-func (f *formatter) formatValueYaml(value string) string {
+func (f *listFormatter) formatValueYaml(value string) string {
 	if f.options.plain {
 		return value
 	}
@@ -125,60 +130,60 @@ func (f *formatter) formatValueYaml(value string) string {
 }
 
 // formatAdded formats an added diff
-func (f *formatter) formatAdded(diff *Diff) string {
+func (f *listFormatter) formatAdded(d *diff.Diff) string {
 	sign := f.colorAdded.Sprint("+")
 
-	path := getNodePath(diff.rightNode)
+	path := diff.GetNodePath(d.RightNode())
 	if path != "" {
 		path = f.colorAdded.Sprint(path)
 	}
 
-	value, _ := f.getNodeValue(diff.rightNode, path)
+	value, _ := f.getNodeValue(d.RightNode(), path)
 	value = f.formatValueYaml(value)
 
-	metadata := getNodeMetadata(diff.rightNode)
+	metadata := getNodeMetadata(d.RightNode())
 	metadata = f.colorMetadata.Sprint(metadata)
 
 	return f.buildOutput(sign, path, value, metadata)
 }
 
 // formatDeleted formats a deleted diff
-func (f *formatter) formatDeleted(diff *Diff) string {
+func (f *listFormatter) formatDeleted(d *diff.Diff) string {
 	sign := f.colorDeleted.Sprint("-")
 
-	path := getNodePath(diff.leftNode)
+	path := diff.GetNodePath(d.LeftNode())
 	if path != "" {
 		path = f.colorDeleted.Sprint(path)
 	}
 
-	value, _ := f.getNodeValue(diff.leftNode, path)
+	value, _ := f.getNodeValue(d.LeftNode(), path)
 	value = f.formatValueYaml(value)
 
-	metadata := getNodeMetadata(diff.leftNode)
+	metadata := getNodeMetadata(d.LeftNode())
 	metadata = f.colorMetadata.Sprint(metadata)
 
 	return f.buildOutput(sign, path, value, metadata)
 }
 
 // formatModified formats a modified diff
-func (f *formatter) formatModified(diff *Diff) string {
+func (f *listFormatter) formatModified(d *diff.Diff) string {
 	sign := f.colorModified.Sprint("~")
 
-	path := getNodePath(diff.leftNode)
+	path := diff.GetNodePath(d.LeftNode())
 	if path != "" {
 		path = f.colorModified.Sprint(path)
 	}
 
-	leftValue, leftMultiLine := f.getNodeValue(diff.leftNode, path)
+	leftValue, leftMultiLine := f.getNodeValue(d.LeftNode(), path)
 	leftValue = f.formatValueYaml(leftValue)
 
-	rightValue, rightMultiLine := f.getNodeValue(diff.rightNode, path)
+	rightValue, rightMultiLine := f.getNodeValue(d.RightNode(), path)
 	rightValue = f.formatValueYaml(rightValue)
 
-	leftMetadata := getNodeMetadata(diff.leftNode)
+	leftMetadata := getNodeMetadata(d.LeftNode())
 	leftMetadata = f.colorMetadata.Sprint(leftMetadata)
 
-	rightMetadata := getNodeMetadata(diff.rightNode)
+	rightMetadata := getNodeMetadata(d.RightNode())
 	rightMetadata = f.colorMetadata.Sprint(rightMetadata)
 
 	symbol := f.getModifiedSymbol(leftMultiLine, rightMultiLine, path, &leftValue, &rightValue)
@@ -187,7 +192,7 @@ func (f *formatter) formatModified(diff *Diff) string {
 }
 
 // getNodeValue extracts and formats the value of a node
-func (f *formatter) getNodeValue(node ast.Node, path string) (string, bool) {
+func (f *listFormatter) getNodeValue(node ast.Node, path string) (string, bool) {
 	indent := defaultIndent
 	newLine := true
 	if path == "" {
@@ -198,7 +203,7 @@ func (f *formatter) getNodeValue(node ast.Node, path string) (string, bool) {
 }
 
 // getModifiedSymbol determines the symbol to use for modified diffs and adjusts values
-func (f *formatter) getModifiedSymbol(leftMultiLine, rightMultiLine bool, path string, leftValue, rightValue *string) string {
+func (f *listFormatter) getModifiedSymbol(leftMultiLine, rightMultiLine bool, path string, leftValue, rightValue *string) string {
 	symbol := "→"
 	if !leftMultiLine && !rightMultiLine {
 		return symbol
@@ -231,7 +236,7 @@ func (f *formatter) getModifiedSymbol(leftMultiLine, rightMultiLine bool, path s
 }
 
 // buildOutput builds the output string for single-value diffs
-func (f *formatter) buildOutput(sign, path, value, metadata string) string {
+func (f *listFormatter) buildOutput(sign, path, value, metadata string) string {
 	if f.options.pathsOnly {
 		return fmt.Sprintf("%s %s", sign, path)
 	}
@@ -250,7 +255,7 @@ func (f *formatter) buildOutput(sign, path, value, metadata string) string {
 }
 
 // buildModifiedOutput builds the output string for modified diffs
-func (f *formatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbol, leftMetadata, rightMetadata string) string {
+func (f *listFormatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbol, leftMetadata, rightMetadata string) string {
 	if f.options.pathsOnly {
 		return fmt.Sprintf("%s %s", sign, path)
 	}
@@ -266,18 +271,6 @@ func (f *formatter) buildModifiedOutput(sign, path, leftValue, rightValue, symbo
 		return fmt.Sprintf("%s %s: %s %s %s %s %s", sign, path, leftMetadata, leftValue, symbol, rightMetadata, rightValue)
 	}
 	return fmt.Sprintf("%s %s: %s %s %s", sign, path, leftValue, symbol, rightValue)
-}
-
-// getNodePath extracts the YAML path from a node
-func getNodePath(node ast.Node) string {
-	if node == nil {
-		return ""
-	}
-	path := node.GetPath()
-	if len(path) > 0 && path[0] == '$' {
-		return path[1:] // remove leading dollar sign
-	}
-	return path
 }
 
 // formatNodeValue formats a node's value with proper indentation
@@ -338,63 +331,4 @@ func calculateIndentLevel(s string) int {
 		}
 	}
 	return 0
-}
-
-// colorPrinter is a global printer instance configured with syntax highlighting
-var colorPrinter printer.Printer = initializeColorPrinter()
-
-// initializeColorPrinter creates a printer with syntax highlighting
-func initializeColorPrinter() printer.Printer {
-	p := printer.Printer{}
-
-	// Configure syntax highlighting colors
-	p.Bool = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiMagenta),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Number = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiMagenta),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.MapKey = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiCyan),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Anchor = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiYellow),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Alias = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiYellow),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.String = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiGreen),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-
-	return p
-}
-
-// formatColorCode formats a color attribute into an ANSI escape sequence
-func formatColorCode(attr color.Attribute) string {
-	return fmt.Sprintf("\x1b[%dm", attr)
-}
-
-// colorize applies YAML syntax highlighting to a string
-func colorize(s string) string {
-	tokens := lexer.Tokenize(s)
-	return colorPrinter.PrintTokens(tokens)
 }
