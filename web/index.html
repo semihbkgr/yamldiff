@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yamldiff - YAML Diff Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>yamldiff</h1>
+        <p>Structural comparison for YAML files</p>
+    </header>
+
+    <main>
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span>Left YAML</span>
+                    <button type="button" class="clear-btn" data-target="left">Clear</button>
+                </div>
+                <textarea id="left" placeholder="Paste your left YAML here..."></textarea>
+            </div>
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span>Right YAML</span>
+                    <button type="button" class="clear-btn" data-target="right">Clear</button>
+                </div>
+                <textarea id="right" placeholder="Paste your right YAML here..."></textarea>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="options">
+                <label>
+                    <input type="checkbox" id="ignoreOrder">
+                    <span>Ignore sequence order</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="pathOnly">
+                    <span>Paths only</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="metadata">
+                    <span>Show metadata</span>
+                </label>
+            </div>
+            <div class="buttons">
+                <button type="button" id="compare" disabled>Loading WASM...</button>
+                <button type="button" id="stat">Stat</button>
+            </div>
+        </div>
+
+        <div class="output-container">
+            <div class="panel-header">
+                <span>Diff Output</span>
+                <span id="status"></span>
+            </div>
+            <pre id="output"></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>
+            <a href="https://github.com/semihbkgr/yamldiff" target="_blank">GitHub</a>
+            <span class="separator">|</span>
+            <span id="version">Version: loading...</span>
+        </p>
+    </footer>
+
+    <script src="wasm_exec.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
