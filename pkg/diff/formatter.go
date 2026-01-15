@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/lexer"
-	"github.com/goccy/go-yaml/printer"
 )
+
+// colorSprinter is an interface for color formatting
+type colorSprinter interface {
+	Sprint(a ...interface{}) string
+	EnableColor()
+	DisableColor()
+}
 
 const (
 	// defaultIndent is the indentation level for diff values with paths
@@ -51,10 +55,10 @@ func WithMetadata(opts *formatOptions) {
 // formatter handles the formatting of diffs
 type formatter struct {
 	options       formatOptions
-	colorAdded    *color.Color
-	colorDeleted  *color.Color
-	colorModified *color.Color
-	colorMetadata *color.Color
+	colorAdded    colorSprinter
+	colorDeleted  colorSprinter
+	colorModified colorSprinter
+	colorMetadata colorSprinter
 }
 
 // newFormatter creates a new formatter with the given options
@@ -65,10 +69,10 @@ func newFormatter(opts ...FormatOption) *formatter {
 	}
 	f := &formatter{
 		options:       options,
-		colorAdded:    color.New(color.FgHiGreen),
-		colorDeleted:  color.New(color.FgHiRed),
-		colorModified: color.New(color.FgHiYellow),
-		colorMetadata: color.New(color.FgHiWhite),
+		colorAdded:    newColorAdded(),
+		colorDeleted:  newColorDeleted(),
+		colorModified: newColorModified(),
+		colorMetadata: newColorMetadata(),
 	}
 
 	if !options.plain {
@@ -338,63 +342,4 @@ func calculateIndentLevel(s string) int {
 		}
 	}
 	return 0
-}
-
-// colorPrinter is a global printer instance configured with syntax highlighting
-var colorPrinter printer.Printer = initializeColorPrinter()
-
-// initializeColorPrinter creates a printer with syntax highlighting
-func initializeColorPrinter() printer.Printer {
-	p := printer.Printer{}
-
-	// Configure syntax highlighting colors
-	p.Bool = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiMagenta),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Number = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiMagenta),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.MapKey = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiCyan),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Anchor = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiYellow),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.Alias = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiYellow),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-	p.String = func() *printer.Property {
-		return &printer.Property{
-			Prefix: formatColorCode(color.FgHiGreen),
-			Suffix: formatColorCode(color.Reset),
-		}
-	}
-
-	return p
-}
-
-// formatColorCode formats a color attribute into an ANSI escape sequence
-func formatColorCode(attr color.Attribute) string {
-	return fmt.Sprintf("\x1b[%dm", attr)
-}
-
-// colorize applies YAML syntax highlighting to a string
-func colorize(s string) string {
-	tokens := lexer.Tokenize(s)
-	return colorPrinter.PrintTokens(tokens)
 }
