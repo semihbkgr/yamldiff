@@ -56,8 +56,8 @@ func compare(this js.Value, args []js.Value) any {
 		return map[string]any{"error": err.Error()}
 	}
 
-	// Build format options (always use Plain for WASM since no terminal colors)
-	formatOpts := []diff.FormatOption{diff.Plain}
+	// Build format options (WASM uses HTML colorization)
+	var formatOpts []diff.FormatOption
 	if pathOnly {
 		formatOpts = append(formatOpts, diff.PathsOnly)
 	} else if metadata {

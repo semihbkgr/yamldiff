@@ -7,13 +7,73 @@
     const leftTextarea = document.getElementById('left');
     const rightTextarea = document.getElementById('right');
     const compareBtn = document.getElementById('compare');
-    const statBtn = document.getElementById('stat');
     const outputEl = document.getElementById('output');
     const statusEl = document.getElementById('status');
     const versionEl = document.getElementById('version');
     const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
-    const pathOnlyCheckbox = document.getElementById('pathOnly');
-    const metadataCheckbox = document.getElementById('metadata');
+
+    // DEV: Default values for testing (remove before release)
+    leftTextarea.value = `apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+  labels:
+    app: app
+    instance: "app-v1"
+    version: "v1"
+spec:
+  containers:
+    - name: app
+      image: app:1.0
+      ports:
+        - name: http-port
+          containerPort: 80
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 512Mi
+          cpu: "300m"
+      volumeMounts:
+        - name: config-volume
+          subPath: app-config.yaml
+          mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        name: app-config`;
+
+    rightTextarea.value = `apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+  labels:
+    app: app
+    instance: "app-v2"
+    version: "v2"
+spec:
+  containers:
+    - name: app
+      image: app:2.0
+      ports:
+        - name: http-port
+          containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 1Gi
+          cpu: "300m"
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: http-port
+  initContainers:
+    - name: init-app
+      image: init-app:1.0`;
 
     // Clear buttons
     document.querySelectorAll('.clear-btn').forEach(btn => {
@@ -21,19 +81,6 @@
             const target = btn.dataset.target;
             document.getElementById(target).value = '';
         });
-    });
-
-    // Mutual exclusivity for pathOnly and metadata
-    pathOnlyCheckbox.addEventListener('change', () => {
-        if (pathOnlyCheckbox.checked) {
-            metadataCheckbox.checked = false;
-        }
-    });
-
-    metadataCheckbox.addEventListener('change', () => {
-        if (metadataCheckbox.checked) {
-            pathOnlyCheckbox.checked = false;
-        }
     });
 
     // Initialize WASM
@@ -49,7 +96,6 @@
             // Enable buttons
             compareBtn.disabled = false;
             compareBtn.textContent = 'Compare';
-            statBtn.disabled = false;
 
             // Show version
             if (typeof yamldiffVersion === 'function') {
@@ -65,35 +111,13 @@
         }
     }
 
-    // Format diff output with colors
-    function formatDiffOutput(text) {
-        if (!text || text.trim() === '') {
+    // Format diff output - WASM now returns HTML-formatted output
+    function formatDiffOutput(html) {
+        if (!html || html.trim() === '') {
             return '<span class="no-diff">No differences found</span>';
         }
-
-        const lines = text.split('\n');
-        return lines.map(line => {
-            const trimmed = line.trim();
-            let className = '';
-
-            if (trimmed.startsWith('+')) {
-                className = 'diff-added';
-            } else if (trimmed.startsWith('-')) {
-                className = 'diff-deleted';
-            } else if (trimmed.startsWith('~')) {
-                className = 'diff-modified';
-            }
-
-            // Escape HTML
-            const escaped = line
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-
-            return className
-                ? `<span class="diff-line ${className}">${escaped}</span>`
-                : `<span class="diff-line">${escaped}</span>`;
-        }).join('\n');
+        // WASM output is already HTML-formatted and escaped
+        return html;
     }
 
     // Compare handler
@@ -108,9 +132,7 @@
         }
 
         const options = {
-            ignoreOrder: ignoreOrderCheckbox.checked,
-            pathOnly: pathOnlyCheckbox.checked,
-            metadata: metadataCheckbox.checked
+            ignoreOrder: ignoreOrderCheckbox.checked
         };
 
         try {
@@ -129,46 +151,6 @@
         }
     }
 
-    // Stat handler
-    function handleStat() {
-        const left = leftTextarea.value;
-        const right = rightTextarea.value;
-
-        if (!left && !right) {
-            outputEl.innerHTML = '<span class="no-diff">Enter YAML content in both panels to compare</span>';
-            statusEl.textContent = '';
-            return;
-        }
-
-        const options = {
-            ignoreOrder: ignoreOrderCheckbox.checked
-        };
-
-        try {
-            const result = yamldiffStat(left, right, options);
-
-            if (result.error) {
-                outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
-                statusEl.textContent = 'Parse error';
-            } else {
-                const stats = result.result;
-                const parts = [];
-                if (stats.added > 0) parts.push(`<span class="diff-added">${stats.added} added</span>`);
-                if (stats.deleted > 0) parts.push(`<span class="diff-deleted">${stats.deleted} deleted</span>`);
-                if (stats.modified > 0) parts.push(`<span class="diff-modified">${stats.modified} modified</span>`);
-
-                if (parts.length === 0) {
-                    outputEl.innerHTML = '<span class="no-diff">No differences found</span>';
-                } else {
-                    outputEl.innerHTML = parts.join(', ');
-                }
-                statusEl.textContent = result.hasDiff ? 'Differences found' : 'No differences';
-            }
-        } catch (err) {
-            outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
-            statusEl.textContent = 'Error';
-        }
-    }
 
     // Escape HTML helper
     function escapeHtml(text) {
@@ -182,7 +164,6 @@
 
     // Event listeners
     compareBtn.addEventListener('click', handleCompare);
-    statBtn.addEventListener('click', handleStat);
 
     // Keyboard shortcut: Ctrl/Cmd + Enter to compare
     document.addEventListener('keydown', (e) => {

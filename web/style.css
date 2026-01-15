@@ -60,7 +60,7 @@ main {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
-    min-height: 300px;
+    min-height: 500px;
 }
 
 .editor-panel {
@@ -175,15 +175,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-button#stat {
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-}
-
-button#stat:hover:not(:disabled) {
-    background-color: var(--bg-primary);
-}
-
 .output-container {
     flex: 1;
     display: flex;
@@ -225,6 +216,36 @@ button#stat:hover:not(:disabled) {
 
 .diff-modified {
     color: var(--modified-color);
+}
+
+.diff-metadata {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+}
+
+/* YAML syntax highlighting */
+.yaml-bool {
+    color: #c586c0;
+}
+
+.yaml-number {
+    color: #b5cea8;
+}
+
+.yaml-key {
+    color: #9cdcfe;
+}
+
+.yaml-anchor {
+    color: var(--modified-color);
+}
+
+.yaml-alias {
+    color: var(--modified-color);
+}
+
+.yaml-string {
+    color: #ce9178;
 }
 
 .error {
