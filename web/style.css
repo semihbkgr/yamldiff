@@ -17,6 +17,7 @@
     --deleted-color: #f14c4c;
     --modified-color: #dcdcaa;
     --error-color: #f14c4c;
+    --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
 body {
@@ -34,10 +35,27 @@ header {
     text-align: center;
 }
 
+.header-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: opacity 0.2s;
+}
+
+.header-link:hover {
+    opacity: 0.8;
+}
+
+.github-logo {
+    flex-shrink: 0;
+}
+
 header h1 {
     font-size: 1.75rem;
     font-weight: 600;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0;
 }
 
 header p {
@@ -60,7 +78,7 @@ main {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
-    min-height: 500px;
+    height: 500px;
 }
 
 .editor-panel {
@@ -70,6 +88,7 @@ main {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     overflow: hidden;
+    min-height: 0;
 }
 
 .panel-header {
@@ -100,26 +119,53 @@ main {
 }
 
 .editor-wrapper {
-    position: relative;
     flex: 1;
     display: flex;
+    min-height: 0;
     overflow: hidden;
+}
+
+.line-numbers {
+    flex-shrink: 0;
+    width: 3rem;
+    padding: 0.75rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--text-secondary);
+    background-color: var(--bg-tertiary);
+    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    user-select: none;
+}
+
+.line-numbers-inner {
+    display: flex;
+    flex-direction: column;
+}
+
+.line-numbers-inner span {
+    display: block;
+}
+
+.editor-content {
+    flex: 1;
+    min-height: 0;
+    position: relative;
 }
 
 .editor-highlight {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     margin: 0;
     padding: 0.75rem;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
-    overflow: auto;
+    overflow: hidden;
     pointer-events: none;
     color: var(--text-primary);
     background-color: var(--bg-secondary);
@@ -132,18 +178,20 @@ main {
 }
 
 textarea {
-    position: relative;
-    flex: 1;
+    display: block;
+    position: absolute;
+    inset: 0;
     resize: none;
     border: none;
     background-color: transparent;
     color: transparent;
     caret-color: var(--text-primary);
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
     padding: 0.75rem;
     line-height: 1.5;
     z-index: 1;
+    overflow: auto;
 }
 
 textarea:focus {
@@ -225,7 +273,7 @@ button:disabled {
     flex: 1;
     padding: 0.75rem;
     overflow: auto;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -235,10 +283,6 @@ button:disabled {
 #status {
     font-size: 0.8rem;
     color: var(--text-secondary);
-}
-
-.diff-line {
-    display: block;
 }
 
 .diff-added {

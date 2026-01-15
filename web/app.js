@@ -8,12 +8,28 @@
     const rightTextarea = document.getElementById('right');
     const leftHighlight = document.getElementById('leftHighlight');
     const rightHighlight = document.getElementById('rightHighlight');
+    const leftLineNumbers = document.getElementById('leftLineNumbers');
+    const rightLineNumbers = document.getElementById('rightLineNumbers');
     const compareBtn = document.getElementById('compare');
     const outputEl = document.getElementById('output');
     const statusEl = document.getElementById('status');
     const versionEl = document.getElementById('version');
     const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
     const pathOnlyCheckbox = document.getElementById('pathOnly');
+    const metadataCheckbox = document.getElementById('metadata');
+
+    // Mutual exclusivity for pathOnly and metadata
+    pathOnlyCheckbox.addEventListener('change', () => {
+        if (pathOnlyCheckbox.checked) {
+            metadataCheckbox.checked = false;
+        }
+    });
+
+    metadataCheckbox.addEventListener('change', () => {
+        if (metadataCheckbox.checked) {
+            pathOnlyCheckbox.checked = false;
+        }
+    });
 
     // Debounce helper
     function debounce(fn, delay) {
@@ -22,6 +38,17 @@
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => fn.apply(this, args), delay);
         };
+    }
+
+    // Update line numbers for a textarea
+    function updateLineNumbers(textarea, lineNumbersEl) {
+        const lines = textarea.value.split('\n');
+        const lineCount = lines.length;
+        let html = '';
+        for (let i = 1; i <= lineCount; i++) {
+            html += `<span>${i}</span>`;
+        }
+        lineNumbersEl.innerHTML = html;
     }
 
     // Update syntax highlighting for a textarea
@@ -36,85 +63,33 @@
     }
 
     // Sync scroll positions
-    function syncScroll(textarea, highlightEl) {
-        highlightEl.parentElement.scrollTop = textarea.scrollTop;
-        highlightEl.parentElement.scrollLeft = textarea.scrollLeft;
+    function syncScroll(textarea, highlightEl, lineNumbersEl) {
+        const scrollTop = textarea.scrollTop;
+        const scrollLeft = textarea.scrollLeft;
+        // highlightEl is the <code>, its parent <pre> is the scrollable element
+        const preEl = highlightEl.parentElement;
+        preEl.scrollTop = scrollTop;
+        preEl.scrollLeft = scrollLeft;
+        lineNumbersEl.style.transform = `translateY(-${scrollTop}px)`;
     }
 
     // Setup highlighting for a textarea
-    function setupHighlighting(textarea, highlightEl) {
-        const debouncedUpdate = debounce(() => updateHighlight(textarea, highlightEl), 30);
+    function setupEditor(textarea, highlightEl, lineNumbersEl) {
+        const debouncedUpdate = debounce(() => {
+            updateHighlight(textarea, highlightEl);
+            updateLineNumbers(textarea, lineNumbersEl);
+        }, 30);
 
         textarea.addEventListener('input', debouncedUpdate);
-        textarea.addEventListener('scroll', () => syncScroll(textarea, highlightEl));
+        textarea.addEventListener('scroll', () => syncScroll(textarea, highlightEl, lineNumbersEl));
+
+        // Initial line numbers
+        updateLineNumbers(textarea, lineNumbersEl);
     }
 
-    // Initialize highlighting for both textareas
-    setupHighlighting(leftTextarea, leftHighlight);
-    setupHighlighting(rightTextarea, rightHighlight);
-
-    // DEV: Default values for testing (remove before release)
-    leftTextarea.value = `apiVersion: v1
-kind: Pod
-metadata:
-  name: app
-  labels:
-    app: app
-    instance: "app-v1"
-    version: "v1"
-spec:
-  containers:
-    - name: app
-      image: app:1.0
-      ports:
-        - name: http-port
-          containerPort: 80
-      resources:
-        requests:
-          memory: 256Mi
-          cpu: "100m"
-        limits:
-          memory: 512Mi
-          cpu: "300m"
-      volumeMounts:
-        - name: config-volume
-          subPath: app-config.yaml
-          mountPath: /etc/config
-  volumes:
-    - name: config-volume
-      configMap:
-        name: app-config`;
-
-    rightTextarea.value = `apiVersion: v1
-kind: Pod
-metadata:
-  name: app
-  labels:
-    app: app
-    instance: "app-v2"
-    version: "v2"
-spec:
-  containers:
-    - name: app
-      image: app:2.0
-      ports:
-        - name: http-port
-          containerPort: 80
-          protocol: TCP
-      resources:
-        requests:
-          memory: 256Mi
-          cpu: "100m"
-        limits:
-          memory: 1Gi
-          cpu: "300m"
-      livenessProbe:
-        httpGet:
-          path: /healthz
-          port: http-port
-  initContainers:
-    - name: init-app
-      image: init-app:1.0`;
+    // Initialize editors for both textareas
+    setupEditor(leftTextarea, leftHighlight, leftLineNumbers);
+    setupEditor(rightTextarea, rightHighlight, rightLineNumbers);
 
     // Clear buttons
     document.querySelectorAll('.clear-btn').forEach(btn => {
@@ -122,9 +97,13 @@ spec:
             const target = btn.dataset.target;
             const textarea = document.getElementById(target);
             const highlightEl = document.getElementById(target + 'Highlight');
+            const lineNumbersEl = document.getElementById(target + 'LineNumbers');
             textarea.value = '';
             if (highlightEl) {
                 highlightEl.innerHTML = '';
+            }
+            if (lineNumbersEl) {
+                lineNumbersEl.innerHTML = '<span>1</span>';
             }
         });
     });
@@ -183,7 +162,8 @@ spec:
 
         const options = {
             ignoreOrder: ignoreOrderCheckbox.checked,
-            pathOnly: pathOnlyCheckbox.checked
+            pathOnly: pathOnlyCheckbox.checked,
+            metadata: metadataCheckbox.checked
         };
 
         try {
