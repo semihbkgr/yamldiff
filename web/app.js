@@ -6,11 +6,52 @@
     // DOM elements
     const leftTextarea = document.getElementById('left');
     const rightTextarea = document.getElementById('right');
+    const leftHighlight = document.getElementById('leftHighlight');
+    const rightHighlight = document.getElementById('rightHighlight');
     const compareBtn = document.getElementById('compare');
     const outputEl = document.getElementById('output');
     const statusEl = document.getElementById('status');
     const versionEl = document.getElementById('version');
     const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
+    const pathOnlyCheckbox = document.getElementById('pathOnly');
+
+    // Debounce helper
+    function debounce(fn, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    // Update syntax highlighting for a textarea
+    function updateHighlight(textarea, highlightEl) {
+        if (typeof yamldiffColorize === 'function') {
+            const highlighted = yamldiffColorize(textarea.value);
+            highlightEl.innerHTML = highlighted || '';
+        } else {
+            // Fallback: show plain escaped text if WASM not loaded
+            highlightEl.textContent = textarea.value;
+        }
+    }
+
+    // Sync scroll positions
+    function syncScroll(textarea, highlightEl) {
+        highlightEl.parentElement.scrollTop = textarea.scrollTop;
+        highlightEl.parentElement.scrollLeft = textarea.scrollLeft;
+    }
+
+    // Setup highlighting for a textarea
+    function setupHighlighting(textarea, highlightEl) {
+        const debouncedUpdate = debounce(() => updateHighlight(textarea, highlightEl), 30);
+
+        textarea.addEventListener('input', debouncedUpdate);
+        textarea.addEventListener('scroll', () => syncScroll(textarea, highlightEl));
+    }
+
+    // Initialize highlighting for both textareas
+    setupHighlighting(leftTextarea, leftHighlight);
+    setupHighlighting(rightTextarea, rightHighlight);
 
     // DEV: Default values for testing (remove before release)
     leftTextarea.value = `apiVersion: v1
@@ -79,7 +120,12 @@ spec:
     document.querySelectorAll('.clear-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const target = btn.dataset.target;
-            document.getElementById(target).value = '';
+            const textarea = document.getElementById(target);
+            const highlightEl = document.getElementById(target + 'Highlight');
+            textarea.value = '';
+            if (highlightEl) {
+                highlightEl.innerHTML = '';
+            }
         });
     });
 
@@ -102,6 +148,10 @@ spec:
                 const ver = yamldiffVersion();
                 versionEl.textContent = 'Version: ' + (ver || 'dev');
             }
+
+            // Trigger initial highlighting for default values
+            updateHighlight(leftTextarea, leftHighlight);
+            updateHighlight(rightTextarea, rightHighlight);
 
             console.log('WASM loaded successfully');
         } catch (err) {
@@ -132,7 +182,8 @@ spec:
         }
 
         const options = {
-            ignoreOrder: ignoreOrderCheckbox.checked
+            ignoreOrder: ignoreOrderCheckbox.checked,
+            pathOnly: pathOnlyCheckbox.checked
         };
 
         try {

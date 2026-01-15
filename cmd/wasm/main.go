@@ -14,6 +14,7 @@ func main() {
 	js.Global().Set("yamldiffCompare", js.FuncOf(compare))
 	js.Global().Set("yamldiffVersion", js.FuncOf(version))
 	js.Global().Set("yamldiffStat", js.FuncOf(stat))
+	js.Global().Set("yamldiffColorize", js.FuncOf(colorize))
 
 	// Keep the Go program running
 	select {}
@@ -132,4 +133,14 @@ func version(this js.Value, args []js.Value) any {
 		return "unknown"
 	}
 	return info.Main.Version
+}
+
+// colorize applies YAML syntax highlighting and returns HTML
+// JavaScript signature: yamldiffColorize(yaml: string) => string
+func colorize(this js.Value, args []js.Value) any {
+	if len(args) < 1 {
+		return ""
+	}
+	yaml := args[0].String()
+	return diff.Colorize(yaml)
 }

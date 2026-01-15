@@ -19,14 +19,20 @@
                     <span>Left YAML</span>
                     <button type="button" class="clear-btn" data-target="left">Clear</button>
                 </div>
-                <textarea id="left" placeholder="Paste your left YAML here..."></textarea>
+                <div class="editor-wrapper">
+                    <pre class="editor-highlight"><code id="leftHighlight"></code></pre>
+                    <textarea id="left" placeholder="Paste your left YAML here..." spellcheck="false"></textarea>
+                </div>
             </div>
             <div class="editor-panel">
                 <div class="panel-header">
                     <span>Right YAML</span>
                     <button type="button" class="clear-btn" data-target="right">Clear</button>
                 </div>
-                <textarea id="right" placeholder="Paste your right YAML here..."></textarea>
+                <div class="editor-wrapper">
+                    <pre class="editor-highlight"><code id="rightHighlight"></code></pre>
+                    <textarea id="right" placeholder="Paste your right YAML here..." spellcheck="false"></textarea>
+                </div>
             </div>
         </div>
 
@@ -35,6 +41,10 @@
                 <label>
                     <input type="checkbox" id="ignoreOrder">
                     <span>Ignore sequence order</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="pathOnly">
+                    <span>Paths only</span>
                 </label>
             </div>
             <div class="buttons">

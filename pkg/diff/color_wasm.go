@@ -107,8 +107,8 @@ func initializeHTMLPrinter() printer.Printer {
 	return p
 }
 
-// colorize applies HTML syntax highlighting to a YAML string
-func colorize(s string) string {
+// Colorize applies HTML syntax highlighting to a YAML string (exported for WASM)
+func Colorize(s string) string {
 	tokens := lexer.Tokenize(s)
 	highlighted := htmlPrinter.PrintTokens(tokens)
 
@@ -116,6 +116,11 @@ func colorize(s string) string {
 	// The printer already added our safe HTML tags, but we need to escape
 	// special characters that aren't part of our tags
 	return escapeHTMLExceptTags(highlighted)
+}
+
+// colorize is an internal alias for Colorize used by formatter
+func colorize(s string) string {
+	return Colorize(s)
 }
 
 // escapeHTMLExceptTags escapes HTML special characters except for our safe span tags
