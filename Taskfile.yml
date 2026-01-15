@@ -1,0 +1,47 @@
+version: "3"
+
+vars:
+  BUILD_VERSION: ""
+  LDFLAGS: -s -w -X github.com/semihbkgr/yamldiff/cmd.buildVersion={{.BUILD_VERSION}}
+
+tasks:
+  build:
+    desc: Build the yamldiff binary
+    cmds:
+      - go build -v --ldflags='{{.LDFLAGS}}' .
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -count 1 ./...
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -cover -count 1 ./...
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  wasm:build:
+    desc: Build the WASM binary
+    cmds:
+      - GOOS=js GOARCH=wasm go build -o web/yamldiff.wasm ./cmd/wasm
+
+  wasm:exec:
+    desc: Copy wasm_exec.js from Go installation
+    cmds:
+      - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
+
+  wasm:
+    desc: Build WASM and copy support files
+    deps:
+      - wasm:build
+      - wasm:exec
