@@ -13,7 +13,6 @@ func main() {
 	// Expose functions to JavaScript
 	js.Global().Set("yamldiffCompare", js.FuncOf(compare))
 	js.Global().Set("yamldiffVersion", js.FuncOf(version))
-	js.Global().Set("yamldiffStat", js.FuncOf(stat))
 	js.Global().Set("yamldiffColorize", js.FuncOf(colorize))
 
 	// Keep the Go program running
@@ -67,62 +66,6 @@ func compare(this js.Value, args []js.Value) any {
 
 	result := diffs.Format(formatOpts...)
 	return map[string]any{"result": result, "hasDiff": diffs.HasDiff()}
-}
-
-// stat returns diff statistics
-// JavaScript signature: yamldiffStat(left: string, right: string, options?: {ignoreOrder?: boolean}) => {result?: {added: number, deleted: number, modified: number}, error?: string}
-func stat(this js.Value, args []js.Value) any {
-	if len(args) < 2 {
-		return map[string]any{"error": "yamldiffStat requires at least 2 arguments: left, right"}
-	}
-
-	left := args[0].String()
-	right := args[1].String()
-
-	// Parse options
-	var ignoreOrder bool
-	if len(args) >= 3 && !args[2].IsNull() && !args[2].IsUndefined() {
-		opts := args[2]
-		if v := opts.Get("ignoreOrder"); !v.IsUndefined() {
-			ignoreOrder = v.Bool()
-		}
-	}
-
-	// Build compare options
-	var compareOpts []diff.CompareOption
-	if ignoreOrder {
-		compareOpts = append(compareOpts, diff.IgnoreSeqOrder)
-	}
-
-	// Compare
-	diffs, err := diff.Compare([]byte(left), []byte(right), compareOpts...)
-	if err != nil {
-		return map[string]any{"error": err.Error()}
-	}
-
-	// Count stats
-	var added, deleted, modified int
-	for _, docDiffs := range diffs {
-		for _, d := range docDiffs {
-			switch d.Type() {
-			case diff.Added:
-				added++
-			case diff.Deleted:
-				deleted++
-			case diff.Modified:
-				modified++
-			}
-		}
-	}
-
-	return map[string]any{
-		"result": map[string]any{
-			"added":    added,
-			"deleted":  deleted,
-			"modified": modified,
-		},
-		"hasDiff": diffs.HasDiff(),
-	}
 }
 
 // version returns the version of yamldiff
