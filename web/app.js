@@ -22,26 +22,6 @@ const editorExtensions = [
         '&': { backgroundColor: 'var(--bg-secondary)' },
         '.cm-gutters': { backgroundColor: 'var(--bg-secondary)', border: 'none' },
     }),
-    EditorView.domEventHandlers({
-        dragover(event) {
-            event.preventDefault();
-            event.currentTarget.closest('.editor-panel').classList.add('drag-over');
-        },
-        dragleave(event) {
-            event.currentTarget.closest('.editor-panel').classList.remove('drag-over');
-        },
-        drop(event, view) {
-            const file = event.dataTransfer.files[0];
-            if (!file) return;
-            event.preventDefault();
-            event.currentTarget.closest('.editor-panel').classList.remove('drag-over');
-            file.text().then(text => {
-                view.dispatch({
-                    changes: { from: 0, to: view.state.doc.length, insert: text },
-                });
-            });
-        },
-    }),
 ];
 
 // Create CodeMirror editors
@@ -56,6 +36,43 @@ const rightEditor = new EditorView({
 });
 
 const editors = { left: leftEditor, right: rightEditor };
+
+// File drag-and-drop on editor panels
+document.querySelectorAll('.editor-panel').forEach(panel => {
+    let dragCounter = 0;
+    const editorId = panel.querySelector('[id$="-editor"]').id.replace('-editor', '');
+
+    panel.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        panel.classList.add('drag-over');
+    });
+
+    panel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    panel.addEventListener('dragleave', () => {
+        dragCounter--;
+        if (dragCounter === 0) {
+            panel.classList.remove('drag-over');
+        }
+    });
+
+    panel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        panel.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        file.text().then(text => {
+            const editor = editors[editorId];
+            editor.dispatch({
+                changes: { from: 0, to: editor.state.doc.length, insert: text },
+            });
+        });
+    });
+});
 
 // Mutual exclusivity for pathOnly and metadata
 pathOnlyCheckbox.addEventListener('change', () => {
