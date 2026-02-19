@@ -5,13 +5,16 @@ import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
 
 // DOM elements
-const compareBtn = document.getElementById('compare');
 const outputEl = document.getElementById('output');
-const statusEl = document.getElementById('status');
 const versionEl = document.getElementById('version');
 const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
-const pathOnlyCheckbox = document.getElementById('pathOnly');
-const metadataCheckbox = document.getElementById('metadata');
+
+// Debounce helper
+let debounceTimer;
+function debounceCompare() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(handleCompare, 300);
+}
 
 // Shared CodeMirror extensions
 const editorExtensions = [
@@ -21,6 +24,11 @@ const editorExtensions = [
     EditorView.theme({
         '&': { backgroundColor: 'var(--bg-secondary)' },
         '.cm-gutters': { backgroundColor: 'var(--bg-secondary)', border: 'none' },
+    }),
+    EditorView.updateListener.of(update => {
+        if (update.docChanged && wasmReady) {
+            debounceCompare();
+        }
     }),
 ];
 
@@ -74,18 +82,6 @@ document.querySelectorAll('.editor-panel').forEach(panel => {
     });
 });
 
-// Mutual exclusivity for pathOnly and metadata
-pathOnlyCheckbox.addEventListener('change', () => {
-    if (pathOnlyCheckbox.checked) {
-        metadataCheckbox.checked = false;
-    }
-});
-
-metadataCheckbox.addEventListener('change', () => {
-    if (metadataCheckbox.checked) {
-        pathOnlyCheckbox.checked = false;
-    }
-});
 
 // Open file buttons
 document.querySelectorAll('.open-btn').forEach(btn => {
@@ -118,6 +114,8 @@ document.querySelectorAll('.clear-btn').forEach(btn => {
 });
 
 // Initialize WASM
+let wasmReady = false;
+
 async function initWasm() {
     try {
         const go = new Go();
@@ -126,10 +124,7 @@ async function initWasm() {
             go.importObject
         );
         go.run(result.instance);
-
-        // Enable buttons
-        compareBtn.disabled = false;
-        compareBtn.textContent = 'Compare';
+        wasmReady = true;
 
         // Show version
         if (typeof yamldiffVersion === 'function') {
@@ -140,7 +135,6 @@ async function initWasm() {
         console.log('WASM loaded successfully');
     } catch (err) {
         console.error('Failed to load WASM:', err);
-        compareBtn.textContent = 'WASM Error';
         outputEl.innerHTML = '<span class="error">Failed to load WASM module. Please refresh the page.</span>';
     }
 }
@@ -159,16 +153,14 @@ function handleCompare() {
     const left = leftEditor.state.doc.toString();
     const right = rightEditor.state.doc.toString();
 
-    if (!left && !right) {
-        outputEl.innerHTML = '<span class="no-diff">Enter YAML content in both panels to compare</span>';
-        statusEl.textContent = '';
+    if (!left || !right) {
+        outputEl.innerHTML = '';
+
         return;
     }
 
     const options = {
         ignoreOrder: ignoreOrderCheckbox.checked,
-        pathOnly: pathOnlyCheckbox.checked,
-        metadata: metadataCheckbox.checked
     };
 
     try {
@@ -176,14 +168,11 @@ function handleCompare() {
 
         if (result.error) {
             outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
-            statusEl.textContent = 'Parse error';
         } else {
             outputEl.innerHTML = formatDiffOutput(result.result);
-            statusEl.textContent = result.hasDiff ? 'Differences found' : 'No differences';
         }
     } catch (err) {
         outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
-        statusEl.textContent = 'Error';
     }
 }
 
@@ -197,17 +186,9 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-// Event listeners
-compareBtn.addEventListener('click', handleCompare);
-
-// Keyboard shortcut: Ctrl/Cmd + Enter to compare
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (!compareBtn.disabled) {
-            handleCompare();
-        }
-    }
+// Re-compare when options change
+ignoreOrderCheckbox.addEventListener('change', () => {
+    if (wasmReady) handleCompare();
 });
 
 // Initialize
