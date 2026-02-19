@@ -125,6 +125,7 @@ async function initWasm() {
         );
         go.run(result.instance);
         wasmReady = true;
+        handleCompare();
 
         // Show version
         if (typeof yamldiffVersion === 'function') {
