@@ -91,6 +91,12 @@ main {
     min-height: 0;
 }
 
+.editor-panel.drag-over {
+    border-color: var(--accent-hover);
+    box-shadow: inset 0 0 30px rgba(17, 119, 187, 0.15), 0 0 8px rgba(17, 119, 187, 0.3);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -102,6 +108,12 @@ main {
     font-weight: 500;
 }
 
+.panel-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.open-btn,
 .clear-btn {
     background: transparent;
     border: 1px solid var(--border-color);
@@ -113,6 +125,7 @@ main {
     transition: all 0.2s;
 }
 
+.open-btn:hover,
 .clear-btn:hover {
     background-color: var(--bg-primary);
     color: var(--text-primary);

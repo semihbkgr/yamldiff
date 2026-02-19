@@ -22,6 +22,26 @@ const editorExtensions = [
         '&': { backgroundColor: 'var(--bg-secondary)' },
         '.cm-gutters': { backgroundColor: 'var(--bg-secondary)', border: 'none' },
     }),
+    EditorView.domEventHandlers({
+        dragover(event) {
+            event.preventDefault();
+            event.currentTarget.closest('.editor-panel').classList.add('drag-over');
+        },
+        dragleave(event) {
+            event.currentTarget.closest('.editor-panel').classList.remove('drag-over');
+        },
+        drop(event, view) {
+            const file = event.dataTransfer.files[0];
+            if (!file) return;
+            event.preventDefault();
+            event.currentTarget.closest('.editor-panel').classList.remove('drag-over');
+            file.text().then(text => {
+                view.dispatch({
+                    changes: { from: 0, to: view.state.doc.length, insert: text },
+                });
+            });
+        },
+    }),
 ];
 
 // Create CodeMirror editors
@@ -48,6 +68,26 @@ metadataCheckbox.addEventListener('change', () => {
     if (metadataCheckbox.checked) {
         pathOnlyCheckbox.checked = false;
     }
+});
+
+// Open file buttons
+document.querySelectorAll('.open-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.yaml,.yml';
+        input.addEventListener('change', () => {
+            const file = input.files[0];
+            if (!file) return;
+            file.text().then(text => {
+                const editor = editors[btn.dataset.target];
+                editor.dispatch({
+                    changes: { from: 0, to: editor.state.doc.length, insert: text },
+                });
+            });
+        });
+        input.click();
+    });
 });
 
 // Clear buttons
