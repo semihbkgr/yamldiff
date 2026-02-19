@@ -118,88 +118,25 @@ main {
     color: var(--text-primary);
 }
 
-.editor-wrapper {
+#left-editor,
+#right-editor {
     flex: 1;
-    display: flex;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.line-numbers {
-    flex-shrink: 0;
-    width: 3rem;
-    padding: 0.75rem 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    line-height: 1.5;
-    text-align: right;
-    color: var(--text-secondary);
-    background-color: var(--bg-tertiary);
-    border-right: 1px solid var(--border-color);
-    overflow: hidden;
-    user-select: none;
-}
-
-.line-numbers-inner {
     display: flex;
     flex-direction: column;
-}
-
-.line-numbers-inner span {
-    display: block;
-}
-
-.editor-content {
-    flex: 1;
     min-height: 0;
-    position: relative;
 }
 
-.editor-highlight {
-    position: absolute;
-    inset: 0;
-    margin: 0;
-    padding: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow: hidden;
-    pointer-events: none;
-    color: var(--text-primary);
-    background-color: var(--bg-secondary);
-}
-
-.editor-highlight code {
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-}
-
-textarea {
-    display: block;
-    position: absolute;
-    inset: 0;
-    resize: none;
-    border: none;
-    background-color: transparent;
-    color: transparent;
-    caret-color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    padding: 0.75rem;
-    line-height: 1.5;
-    z-index: 1;
+.cm-editor {
+    flex: 1;
     overflow: auto;
 }
 
-textarea:focus {
+.cm-editor.cm-focused {
     outline: none;
 }
 
-textarea::placeholder {
-    color: var(--text-secondary);
+.cm-editor .cm-scroller {
+    scrollbar-color: var(--border-color) transparent;
 }
 
 .controls {

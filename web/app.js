@@ -1,211 +1,157 @@
 // yamldiff Web Application
 
-(function() {
-    'use strict';
+import { basicSetup, EditorView } from 'codemirror';
+import { yaml } from '@codemirror/lang-yaml';
+import { oneDark } from '@codemirror/theme-one-dark';
 
-    // DOM elements
-    const leftTextarea = document.getElementById('left');
-    const rightTextarea = document.getElementById('right');
-    const leftHighlight = document.getElementById('leftHighlight');
-    const rightHighlight = document.getElementById('rightHighlight');
-    const leftLineNumbers = document.getElementById('leftLineNumbers');
-    const rightLineNumbers = document.getElementById('rightLineNumbers');
-    const compareBtn = document.getElementById('compare');
-    const outputEl = document.getElementById('output');
-    const statusEl = document.getElementById('status');
-    const versionEl = document.getElementById('version');
-    const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
-    const pathOnlyCheckbox = document.getElementById('pathOnly');
-    const metadataCheckbox = document.getElementById('metadata');
+// DOM elements
+const compareBtn = document.getElementById('compare');
+const outputEl = document.getElementById('output');
+const statusEl = document.getElementById('status');
+const versionEl = document.getElementById('version');
+const ignoreOrderCheckbox = document.getElementById('ignoreOrder');
+const pathOnlyCheckbox = document.getElementById('pathOnly');
+const metadataCheckbox = document.getElementById('metadata');
 
-    // Mutual exclusivity for pathOnly and metadata
-    pathOnlyCheckbox.addEventListener('change', () => {
-        if (pathOnlyCheckbox.checked) {
-            metadataCheckbox.checked = false;
-        }
-    });
+// Shared CodeMirror extensions
+const editorExtensions = [
+    basicSetup,
+    yaml(),
+    oneDark,
+    EditorView.theme({
+        '&': { backgroundColor: 'var(--bg-secondary)' },
+        '.cm-gutters': { backgroundColor: 'var(--bg-secondary)', border: 'none' },
+    }),
+];
 
-    metadataCheckbox.addEventListener('change', () => {
-        if (metadataCheckbox.checked) {
-            pathOnlyCheckbox.checked = false;
-        }
-    });
+// Create CodeMirror editors
+const leftEditor = new EditorView({
+    extensions: editorExtensions,
+    parent: document.getElementById('left-editor'),
+});
 
-    // Debounce helper
-    function debounce(fn, delay) {
-        let timeoutId;
-        return function(...args) {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => fn.apply(this, args), delay);
-        };
+const rightEditor = new EditorView({
+    extensions: editorExtensions,
+    parent: document.getElementById('right-editor'),
+});
+
+const editors = { left: leftEditor, right: rightEditor };
+
+// Mutual exclusivity for pathOnly and metadata
+pathOnlyCheckbox.addEventListener('change', () => {
+    if (pathOnlyCheckbox.checked) {
+        metadataCheckbox.checked = false;
     }
+});
 
-    // Update line numbers for a textarea
-    function updateLineNumbers(textarea, lineNumbersEl) {
-        const lines = textarea.value.split('\n');
-        const lineCount = lines.length;
-        let html = '';
-        for (let i = 1; i <= lineCount; i++) {
-            html += `<span>${i}</span>`;
-        }
-        lineNumbersEl.innerHTML = html;
+metadataCheckbox.addEventListener('change', () => {
+    if (metadataCheckbox.checked) {
+        pathOnlyCheckbox.checked = false;
     }
+});
 
-    // Update syntax highlighting for a textarea
-    function updateHighlight(textarea, highlightEl) {
-        if (typeof yamldiffColorize === 'function') {
-            const highlighted = yamldiffColorize(textarea.value);
-            highlightEl.innerHTML = highlighted || '';
-        } else {
-            // Fallback: show plain escaped text if WASM not loaded
-            highlightEl.textContent = textarea.value;
-        }
-    }
-
-    // Sync scroll positions
-    function syncScroll(textarea, highlightEl, lineNumbersEl) {
-        const scrollTop = textarea.scrollTop;
-        const scrollLeft = textarea.scrollLeft;
-        // highlightEl is the <code>, its parent <pre> is the scrollable element
-        const preEl = highlightEl.parentElement;
-        preEl.scrollTop = scrollTop;
-        preEl.scrollLeft = scrollLeft;
-        lineNumbersEl.style.transform = `translateY(-${scrollTop}px)`;
-    }
-
-    // Setup highlighting for a textarea
-    function setupEditor(textarea, highlightEl, lineNumbersEl) {
-        const debouncedUpdate = debounce(() => {
-            updateHighlight(textarea, highlightEl);
-            updateLineNumbers(textarea, lineNumbersEl);
-        }, 30);
-
-        textarea.addEventListener('input', debouncedUpdate);
-        textarea.addEventListener('scroll', () => syncScroll(textarea, highlightEl, lineNumbersEl));
-
-        // Initial line numbers
-        updateLineNumbers(textarea, lineNumbersEl);
-    }
-
-    // Initialize editors for both textareas
-    setupEditor(leftTextarea, leftHighlight, leftLineNumbers);
-    setupEditor(rightTextarea, rightHighlight, rightLineNumbers);
-
-    // Clear buttons
-    document.querySelectorAll('.clear-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const target = btn.dataset.target;
-            const textarea = document.getElementById(target);
-            const highlightEl = document.getElementById(target + 'Highlight');
-            const lineNumbersEl = document.getElementById(target + 'LineNumbers');
-            textarea.value = '';
-            if (highlightEl) {
-                highlightEl.innerHTML = '';
-            }
-            if (lineNumbersEl) {
-                lineNumbersEl.innerHTML = '<span>1</span>';
-            }
+// Clear buttons
+document.querySelectorAll('.clear-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const editor = editors[btn.dataset.target];
+        editor.dispatch({
+            changes: { from: 0, to: editor.state.doc.length, insert: '' },
         });
     });
+});
 
-    // Initialize WASM
-    async function initWasm() {
-        try {
-            const go = new Go();
-            const result = await WebAssembly.instantiateStreaming(
-                fetch('yamldiff.wasm'),
-                go.importObject
-            );
-            go.run(result.instance);
+// Initialize WASM
+async function initWasm() {
+    try {
+        const go = new Go();
+        const result = await WebAssembly.instantiateStreaming(
+            fetch('yamldiff.wasm'),
+            go.importObject
+        );
+        go.run(result.instance);
 
-            // Enable buttons
-            compareBtn.disabled = false;
-            compareBtn.textContent = 'Compare';
+        // Enable buttons
+        compareBtn.disabled = false;
+        compareBtn.textContent = 'Compare';
 
-            // Show version
-            if (typeof yamldiffVersion === 'function') {
-                const ver = yamldiffVersion();
-                versionEl.textContent = 'Version: ' + (ver || 'dev');
-            }
-
-            // Trigger initial highlighting for default values
-            updateHighlight(leftTextarea, leftHighlight);
-            updateHighlight(rightTextarea, rightHighlight);
-
-            console.log('WASM loaded successfully');
-        } catch (err) {
-            console.error('Failed to load WASM:', err);
-            compareBtn.textContent = 'WASM Error';
-            outputEl.innerHTML = '<span class="error">Failed to load WASM module. Please refresh the page.</span>';
+        // Show version
+        if (typeof yamldiffVersion === 'function') {
+            const ver = yamldiffVersion();
+            versionEl.textContent = 'Version: ' + (ver || 'dev');
         }
+
+        console.log('WASM loaded successfully');
+    } catch (err) {
+        console.error('Failed to load WASM:', err);
+        compareBtn.textContent = 'WASM Error';
+        outputEl.innerHTML = '<span class="error">Failed to load WASM module. Please refresh the page.</span>';
+    }
+}
+
+// Format diff output - WASM now returns HTML-formatted output
+function formatDiffOutput(html) {
+    if (!html || html.trim() === '') {
+        return '<span class="no-diff">No differences found</span>';
+    }
+    // WASM output is already HTML-formatted and escaped
+    return html;
+}
+
+// Compare handler
+function handleCompare() {
+    const left = leftEditor.state.doc.toString();
+    const right = rightEditor.state.doc.toString();
+
+    if (!left && !right) {
+        outputEl.innerHTML = '<span class="no-diff">Enter YAML content in both panels to compare</span>';
+        statusEl.textContent = '';
+        return;
     }
 
-    // Format diff output - WASM now returns HTML-formatted output
-    function formatDiffOutput(html) {
-        if (!html || html.trim() === '') {
-            return '<span class="no-diff">No differences found</span>';
+    const options = {
+        ignoreOrder: ignoreOrderCheckbox.checked,
+        pathOnly: pathOnlyCheckbox.checked,
+        metadata: metadataCheckbox.checked
+    };
+
+    try {
+        const result = yamldiffCompare(left, right, options);
+
+        if (result.error) {
+            outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
+            statusEl.textContent = 'Parse error';
+        } else {
+            outputEl.innerHTML = formatDiffOutput(result.result);
+            statusEl.textContent = result.hasDiff ? 'Differences found' : 'No differences';
         }
-        // WASM output is already HTML-formatted and escaped
-        return html;
+    } catch (err) {
+        outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
+        statusEl.textContent = 'Error';
     }
+}
 
-    // Compare handler
-    function handleCompare() {
-        const left = leftTextarea.value;
-        const right = rightTextarea.value;
+// Escape HTML helper
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
-        if (!left && !right) {
-            outputEl.innerHTML = '<span class="no-diff">Enter YAML content in both panels to compare</span>';
-            statusEl.textContent = '';
-            return;
-        }
+// Event listeners
+compareBtn.addEventListener('click', handleCompare);
 
-        const options = {
-            ignoreOrder: ignoreOrderCheckbox.checked,
-            pathOnly: pathOnlyCheckbox.checked,
-            metadata: metadataCheckbox.checked
-        };
-
-        try {
-            const result = yamldiffCompare(left, right, options);
-
-            if (result.error) {
-                outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
-                statusEl.textContent = 'Parse error';
-            } else {
-                outputEl.innerHTML = formatDiffOutput(result.result);
-                statusEl.textContent = result.hasDiff ? 'Differences found' : 'No differences';
-            }
-        } catch (err) {
-            outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
-            statusEl.textContent = 'Error';
+// Keyboard shortcut: Ctrl/Cmd + Enter to compare
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!compareBtn.disabled) {
+            handleCompare();
         }
     }
+});
 
-
-    // Escape HTML helper
-    function escapeHtml(text) {
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    // Event listeners
-    compareBtn.addEventListener('click', handleCompare);
-
-    // Keyboard shortcut: Ctrl/Cmd + Enter to compare
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            if (!compareBtn.disabled) {
-                handleCompare();
-            }
-        }
-    });
-
-    // Initialize
-    initWasm();
-})();
+// Initialize
+initWasm();
