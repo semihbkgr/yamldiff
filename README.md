@@ -1,5 +1,6 @@
 # yamldiff
 
+[![Playground](https://img.shields.io/badge/playground-blue)](https://semihbkgr.github.io/yamldiff)
 [![Go Reference](https://pkg.go.dev/badge/github.com/semihbkgr/yamldiff.svg)](https://pkg.go.dev/github.com/semihbkgr/yamldiff)
 [![Go CI](https://github.com/semihbkgr/yamldiff/actions/workflows/ci.yaml/badge.svg)](https://github.com/semihbkgr/yamldiff/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/gh/semihbkgr/yamldiff/graph/badge.svg?token=3DYZXV89VE)](https://codecov.io/gh/semihbkgr/yamldiff)
