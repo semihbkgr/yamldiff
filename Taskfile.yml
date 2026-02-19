@@ -35,7 +35,7 @@ tasks:
     cmds:
       - GOOS=js GOARCH=wasm go build -o web/yamldiff.wasm ./cmd/wasm
 
-  wasm:exec:
+  wasm:cp-exec:
     desc: Copy wasm_exec.js from Go installation
     cmds:
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
@@ -44,4 +44,4 @@ tasks:
     desc: Build WASM and copy support files
     deps:
       - wasm:build
-      - wasm:exec
+      - wasm:cp-exec

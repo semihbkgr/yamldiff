@@ -4,7 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>yamldiff - YAML Diff Tool</title>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-X7REVJ5Z2E"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-X7REVJ5Z2E');
+    </script>
     <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "codemirror": "https://esm.sh/*codemirror@6.0.2",
+            "@codemirror/lang-yaml": "https://esm.sh/*@codemirror/lang-yaml@6.1.2",
+            "@codemirror/theme-one-dark": "https://esm.sh/*@codemirror/theme-one-dark@6.1.3",
+            "@codemirror/": "https://esm.sh/*@codemirror/",
+            "@lezer/": "https://esm.sh/*@lezer/",
+            "style-mod": "https://esm.sh/style-mod",
+            "w3c-keyname": "https://esm.sh/w3c-keyname",
+            "crelt": "https://esm.sh/crelt",
+            "@marijn/find-cluster-break": "https://esm.sh/@marijn/find-cluster-break"
+        }
+    }
+    </script>
 </head>
 <body>
     <header>
@@ -21,60 +43,33 @@
         <div class="editor-container">
             <div class="editor-panel">
                 <div class="panel-header">
-                    <span>Left YAML</span>
-                    <button type="button" class="clear-btn" data-target="left">Clear</button>
-                </div>
-                <div class="editor-wrapper">
-                    <div class="line-numbers">
-                        <div class="line-numbers-inner" id="leftLineNumbers"></div>
-                    </div>
-                    <div class="editor-content">
-                        <pre class="editor-highlight"><code id="leftHighlight"></code></pre>
-                        <textarea id="left" placeholder="Paste your left YAML here..." spellcheck="false"></textarea>
+                    <span>Old YAML</span>
+                    <div class="panel-actions">
+                        <button type="button" class="open-btn" data-target="left">Open</button>
+                        <button type="button" class="clear-btn" data-target="left">Clear</button>
                     </div>
                 </div>
+                <div id="left-editor"></div>
             </div>
             <div class="editor-panel">
                 <div class="panel-header">
-                    <span>Right YAML</span>
-                    <button type="button" class="clear-btn" data-target="right">Clear</button>
-                </div>
-                <div class="editor-wrapper">
-                    <div class="line-numbers">
-                        <div class="line-numbers-inner" id="rightLineNumbers"></div>
-                    </div>
-                    <div class="editor-content">
-                        <pre class="editor-highlight"><code id="rightHighlight"></code></pre>
-                        <textarea id="right" placeholder="Paste your right YAML here..." spellcheck="false"></textarea>
+                    <span>New YAML</span>
+                    <div class="panel-actions">
+                        <button type="button" class="open-btn" data-target="right">Open</button>
+                        <button type="button" class="clear-btn" data-target="right">Clear</button>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <div class="options">
-                <label>
-                    <input type="checkbox" id="ignoreOrder">
-                    <span>Ignore sequence order</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="pathOnly">
-                    <span>Paths only</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="metadata">
-                    <span>Show metadata</span>
-                </label>
-            </div>
-            <div class="buttons">
-                <button type="button" id="compare" disabled>Loading WASM...</button>
+                <div id="right-editor"></div>
             </div>
         </div>
 
         <div class="output-container">
             <div class="panel-header">
                 <span>Diff Output</span>
-                <span id="status"></span>
+                <label class="option-label">
+                    <input type="checkbox" id="ignoreOrder">
+                    <span>Ignore sequence order</span>
+                </label>
             </div>
             <pre id="output"></pre>
         </div>
@@ -89,6 +84,6 @@
     </footer>
 
     <script src="wasm_exec.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
