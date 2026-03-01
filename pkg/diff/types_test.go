@@ -524,6 +524,75 @@ func TestDocDiffs_Format(t *testing.T) {
 	}
 }
 
+func TestDiff_Range(t *testing.T) {
+	t.Run("scalar modified", func(t *testing.T) {
+		left := "name: hello"
+		right := "name: world"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		// "hello" starts at 0-based byte 6, length 5
+		require.Equal(t, Range{Start: 6, End: 11}, d.LeftRange())
+		// "world" starts at 0-based byte 6, length 5
+		require.Equal(t, Range{Start: 6, End: 11}, d.RightRange())
+	})
+
+	t.Run("added key", func(t *testing.T) {
+		right := "name: hello\nage: 30"
+		rightAst, err := parser.ParseBytes([]byte(right), 0)
+		require.NoError(t, err)
+		rightMapping := rightAst.Docs[0].Body.(*ast.MappingNode)
+		// Use MappingValueNode for "age: 30" to cover full key-value range
+		d := newDiff(nil, rightMapping.Values[1])
+		require.Equal(t, Range{}, d.LeftRange())
+		// "age" starts at byte 12, "30" ends at byte 19
+		require.Equal(t, Range{Start: 12, End: 19}, d.RightRange())
+	})
+
+	t.Run("deleted key", func(t *testing.T) {
+		left := "name: hello\nage: 30"
+		leftAst, err := parser.ParseBytes([]byte(left), 0)
+		require.NoError(t, err)
+		leftMapping := leftAst.Docs[0].Body.(*ast.MappingNode)
+		d := newDiff(leftMapping.Values[1], nil)
+		// "age" starts at byte 12, "30" ends at byte 19
+		require.Equal(t, Range{Start: 12, End: 19}, d.LeftRange())
+		require.Equal(t, Range{}, d.RightRange())
+	})
+
+	t.Run("flow sequence element", func(t *testing.T) {
+		left := "[a, b, c]"
+		right := "[a, b, d]"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		// "c" at byte 7, length 1
+		require.Equal(t, Range{Start: 7, End: 8}, d.LeftRange())
+		// "d" at byte 7, length 1
+		require.Equal(t, Range{Start: 7, End: 8}, d.RightRange())
+	})
+
+	t.Run("block mapping deleted key", func(t *testing.T) {
+		left := "key1: val1\nkey2: val2"
+		leftAst, err := parser.ParseBytes([]byte(left), 0)
+		require.NoError(t, err)
+		leftMapping := leftAst.Docs[0].Body.(*ast.MappingNode)
+		// MappingValueNode for "key2: val2"
+		d := newDiff(leftMapping.Values[1], nil)
+		// "key2" starts at byte 11, "val2" ends at byte 21
+		require.Equal(t, Range{Start: 11, End: 21}, d.LeftRange())
+		require.Equal(t, Range{}, d.RightRange())
+	})
+
+	t.Run("nil nodes", func(t *testing.T) {
+		d := newDiff(nil, nil)
+		require.Equal(t, Range{}, d.LeftRange())
+		require.Equal(t, Range{}, d.RightRange())
+	})
+}
+
 func TestDiffType_String(t *testing.T) {
 	tests := []struct {
 		diffType DiffType
