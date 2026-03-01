@@ -204,6 +204,10 @@ func mappingValueNodesIntoMap(n *ast.MappingNode) map[string]*ast.MappingValueNo
 }
 
 func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, options *compareOptions) []*Diff {
+	if options.ignoreSeqOrder {
+		return compareSequenceNodesIgnoreOrder(leftNode, rightNode, options)
+	}
+
 	diffs := make([]*Diff, 0)
 	l := max(len(leftNode.Values), len(rightNode.Values))
 	for i := 0; i < l; i++ {
@@ -217,48 +221,64 @@ func compareSequenceNodes(leftNode, rightNode *ast.SequenceNode, options *compar
 		diffs = append(diffs, compareNodes(leftValue, rightValue, options)...)
 	}
 
-	if options.ignoreSeqOrder {
-		diffs = ignoreIndexes(diffs, options)
-	}
-
 	return diffs
 }
 
-func ignoreIndexes(diffs []*Diff, options *compareOptions) []*Diff {
-	leftNodes := make([]ast.Node, len(diffs))
-	rightNodes := make([]ast.Node, len(diffs))
-	for i, diff := range diffs {
-		leftNodes[i] = diff.leftNode
-		rightNodes[i] = diff.rightNode
-	}
+// compareSequenceNodesIgnoreOrder compares sequence elements by matching whole
+// elements regardless of their position. This avoids the granularity mismatch
+// where property-level diffs from complex elements (maps) were incorrectly
+// treated as individual sequence items.
+func compareSequenceNodesIgnoreOrder(leftNode, rightNode *ast.SequenceNode, options *compareOptions) []*Diff {
+	leftValues := leftNode.Values
+	rightValues := rightNode.Values
 
-	for il, leftNode := range leftNodes {
-		if leftNode == nil {
-			continue
-		}
-		for ir, rightNode := range rightNodes {
-			if rightNode == nil {
+	leftMatched := make([]bool, len(leftValues))
+	rightMatched := make([]bool, len(rightValues))
+
+	// Phase 1: Greedy exact matching at element level.
+	for il, leftElem := range leftValues {
+		for ir, rightElem := range rightValues {
+			if rightMatched[ir] {
 				continue
 			}
-			if len(compareNodes(leftNode, rightNode, options)) == 0 {
-				leftNodes[il] = nil
-				rightNodes[ir] = nil
+			if len(compareNodes(leftElem, rightElem, options)) == 0 {
+				leftMatched[il] = true
+				rightMatched[ir] = true
 				break
 			}
 		}
 	}
 
-	resultDiffs := make([]*Diff, 0)
-	for i := range diffs {
-		leftNode := leftNodes[i]
-		rightNode := rightNodes[i]
-		if leftNode == nil && rightNode == nil {
-			continue
+	// Collect unmatched elements.
+	var unmatchedLeft []ast.Node
+	var unmatchedRight []ast.Node
+	for il, matched := range leftMatched {
+		if !matched {
+			unmatchedLeft = append(unmatchedLeft, leftValues[il])
 		}
-		resultDiffs = append(resultDiffs, newDiff(leftNode, rightNode))
+	}
+	for ir, matched := range rightMatched {
+		if !matched {
+			unmatchedRight = append(unmatchedRight, rightValues[ir])
+		}
 	}
 
-	return resultDiffs
+	// Phase 2: Pair remaining unmatched elements positionally and compare.
+	diffs := make([]*Diff, 0)
+	paired := min(len(unmatchedLeft), len(unmatchedRight))
+	for i := 0; i < paired; i++ {
+		diffs = append(diffs, compareNodes(unmatchedLeft[i], unmatchedRight[i], options)...)
+	}
+
+	// Remaining unmatched are pure additions/deletions.
+	for i := paired; i < len(unmatchedLeft); i++ {
+		diffs = append(diffs, newDiff(unmatchedLeft[i], nil))
+	}
+	for i := paired; i < len(unmatchedRight); i++ {
+		diffs = append(diffs, newDiff(nil, unmatchedRight[i]))
+	}
+
+	return diffs
 }
 
 func stringNodeValue(node ast.Node) string {
