@@ -140,13 +140,22 @@ async function initWasm() {
     }
 }
 
-// Format diff output - WASM now returns HTML-formatted output
-function formatDiffOutput(html) {
-    if (!html || html.trim() === '') {
+// Format diff output from structured diffs array
+function formatDiffOutput(diffs) {
+    if (!diffs || diffs.length === 0) {
         return '<span class="no-diff">No differences found</span>';
     }
-    // WASM output is already HTML-formatted and escaped
-    return html;
+
+    const docStrings = diffs.map(docDiffs => {
+        if (!docDiffs || docDiffs.length === 0) return '';
+        return docDiffs.map(d => d.format).join('\n');
+    });
+
+    const output = docStrings.join('\n---\n');
+    if (!output.trim()) {
+        return '<span class="no-diff">No differences found</span>';
+    }
+    return output;
 }
 
 // Compare handler
@@ -170,7 +179,7 @@ function handleCompare() {
         if (result.error) {
             outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
         } else {
-            outputEl.innerHTML = formatDiffOutput(result.result);
+            outputEl.innerHTML = formatDiffOutput(result.diffs);
         }
     } catch (err) {
         outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
