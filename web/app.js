@@ -184,23 +184,53 @@ async function initWasm() {
     }
 }
 
+// Scroll editor to a source position, centering it in the viewport
+function scrollToSource(editor, source) {
+    if (!source) return;
+    const pos = Math.min(source.start, editor.state.doc.length);
+    editor.dispatch({
+        selection: { anchor: pos },
+        effects: EditorView.scrollIntoView(pos, { y: 'center' }),
+    });
+    editor.focus();
+}
+
 // Format diff output from structured diffs array
 function formatDiffOutput(diffs) {
     if (!diffs || diffs.length === 0) {
         return '<span class="no-diff">No differences found</span>';
     }
 
-    const docStrings = diffs.map(docDiffs => {
+    const docParts = diffs.map(docDiffs => {
         if (!docDiffs || docDiffs.length === 0) return '';
-        return docDiffs.map(d => d.format).join('\n');
+        return docDiffs.map((d, i) => {
+            const dataAttrs = `data-left-start="${d.leftSource?.start ?? ''}" data-left-end="${d.leftSource?.end ?? ''}" data-right-start="${d.rightSource?.start ?? ''}" data-right-end="${d.rightSource?.end ?? ''}"`;
+            return `<span class="diff-entry diff-${d.type}" ${dataAttrs}>${d.format}</span>`;
+        }).join('\n');
     });
 
-    const output = docStrings.join('\n---\n');
+    const output = docParts.join('\n---\n');
     if (!output.trim()) {
         return '<span class="no-diff">No differences found</span>';
     }
     return output;
 }
+
+// Handle clicks on diff entries
+outputEl.addEventListener('click', (e) => {
+    const entry = e.target.closest('.diff-entry');
+    if (!entry) return;
+
+    const leftStart = entry.dataset.leftStart;
+    const rightStart = entry.dataset.rightStart;
+
+    if (leftStart !== '') {
+        scrollToSource(leftEditor, { start: parseInt(leftStart) });
+    }
+    if (rightStart !== '') {
+        scrollToSource(rightEditor, { start: parseInt(rightStart) });
+    }
+});
 
 // Apply diff highlights to editors
 function applyHighlights(diffs) {

@@ -263,6 +263,17 @@ button:disabled {
     color: #ce9178;
 }
 
+/* Clickable diff entries in output */
+.diff-entry {
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 1px 0;
+}
+
+.diff-entry:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
 /* CodeMirror editor diff highlights */
 .cm-diff-added {
     background-color: rgba(78, 201, 176, 0.35);
