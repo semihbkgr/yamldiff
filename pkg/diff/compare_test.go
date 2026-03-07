@@ -1113,10 +1113,111 @@ func Test_compareNodesSequenceTypesIgnoreSeqOrder(t *testing.T) {
 				- foo
 			`),
 			expectedDiffs: map[string]DiffType{
-				"[0]": Added,
 				"[1]": Modified,
-				"[2]": Deleted,
+				"[2]": Modified,
 			},
+		},
+		{
+			name: "complex objects reordered",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			right: heredoc.Doc(`
+				- name: bob
+				  age: 25
+				- name: alice
+				  age: 30
+			`),
+			expectedDiffs: nil,
+		},
+		{
+			name: "complex objects with prepended element",
+			left: heredoc.Doc(`
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+				- name: three
+				  value: THREE
+			`),
+			right: heredoc.Doc(`
+				- name: zero
+				  value: ZERO
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+				- name: three
+				  value: THREE
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[0]": Added,
+			},
+		},
+		{
+			name: "complex objects with removed element",
+			left: heredoc.Doc(`
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+				- name: three
+				  value: THREE
+			`),
+			right: heredoc.Doc(`
+				- name: three
+				  value: THREE
+				- name: one
+				  value: ONE
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[1]": Deleted,
+			},
+		},
+		{
+			name: "complex objects with modified property",
+			left: heredoc.Doc(`
+				- name: alice
+				  role: admin
+				- name: bob
+				  role: user
+			`),
+			right: heredoc.Doc(`
+				- name: bob
+				  role: moderator
+				- name: alice
+				  role: admin
+			`),
+			expectedDiffs: map[string]DiffType{
+				"[1].role": Modified,
+			},
+		},
+		{
+			name: "nested sequences within maps reordered",
+			left: heredoc.Doc(`
+				- name: group1
+				  items:
+				    - a
+				    - b
+				- name: group2
+				  items:
+				    - c
+				    - d
+			`),
+			right: heredoc.Doc(`
+				- name: group2
+				  items:
+				    - c
+				    - d
+				- name: group1
+				  items:
+				    - a
+				    - b
+			`),
+			expectedDiffs: nil,
 		},
 	}
 
@@ -3024,7 +3125,7 @@ func Test_compareSequenceNodes(t *testing.T) {
 	}
 }
 
-func Test_ignoreIndexes(t *testing.T) {
+func Test_compareSequenceNodesIgnoreOrder(t *testing.T) {
 	tests := []struct {
 		name          string
 		left          string
@@ -3115,8 +3216,8 @@ func Test_ignoreIndexes(t *testing.T) {
 				- modified_bar
 				- qux
 			`),
-			expectedDiffs: 3,
-			expectedTypes: map[DiffType]int{Deleted: 1, Modified: 1, Added: 1},
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Modified: 2},
 		},
 		{
 			name: "complex objects with same content",
@@ -3135,6 +3236,29 @@ func Test_ignoreIndexes(t *testing.T) {
 			expectedDiffs: 0,
 		},
 		{
+			name: "complex objects with prepended element",
+			left: heredoc.Doc(`
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+				- name: three
+				  value: THREE
+			`),
+			right: heredoc.Doc(`
+				- name: zero
+				  value: ZERO
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+				- name: three
+				  value: THREE
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Added: 1},
+		},
+		{
 			name: "nested sequences",
 			left: heredoc.Doc(`
 				- - item1
@@ -3149,6 +3273,190 @@ func Test_ignoreIndexes(t *testing.T) {
 				  - item2
 			`),
 			expectedDiffs: 0,
+		},
+		{
+			name: "matrix sequences reordered rows",
+			left: heredoc.Doc(`
+				- - 1
+				  - 2
+				  - 3
+				- - 4
+				  - 5
+				  - 6
+				- - 7
+				  - 8
+				  - 9
+			`),
+			right: heredoc.Doc(`
+				- - 7
+				  - 8
+				  - 9
+				- - 1
+				  - 2
+				  - 3
+				- - 4
+				  - 5
+				  - 6
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "matrix sequences with added row",
+			left: heredoc.Doc(`
+				- - 1
+				  - 2
+				- - 3
+				  - 4
+			`),
+			right: heredoc.Doc(`
+				- - 5
+				  - 6
+				- - 3
+				  - 4
+				- - 1
+				  - 2
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Added: 1},
+		},
+		{
+			name: "matrix sequences with removed row",
+			left: heredoc.Doc(`
+				- - 1
+				  - 2
+				- - 3
+				  - 4
+				- - 5
+				  - 6
+			`),
+			right: heredoc.Doc(`
+				- - 5
+				  - 6
+				- - 1
+				  - 2
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Deleted: 1},
+		},
+		{
+			name: "matrix sequences with modified element inside row",
+			left: heredoc.Doc(`
+				- - 1
+				  - 2
+				  - 3
+				- - 4
+				  - 5
+				  - 6
+			`),
+			right: heredoc.Doc(`
+				- - 4
+				  - 5
+				  - 6
+				- - 1
+				  - 2
+				  - 99
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Modified: 1},
+		},
+		{
+			name: "three level deep nested sequences reordered",
+			left: heredoc.Doc(`
+				- - - a
+				    - b
+				  - - c
+				    - d
+				- - - e
+				    - f
+				  - - g
+				    - h
+			`),
+			right: heredoc.Doc(`
+				- - - e
+				    - f
+				  - - g
+				    - h
+				- - - a
+				    - b
+				  - - c
+				    - d
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "three level deep nested sequences with added leaf",
+			left: heredoc.Doc(`
+				- - - a
+				    - b
+				  - - c
+				    - d
+			`),
+			right: heredoc.Doc(`
+				- - - c
+				    - d
+				  - - a
+				    - b
+				    - z
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Added: 1},
+		},
+		{
+			name: "sequences of maps containing sequences reordered",
+			left: heredoc.Doc(`
+				- name: team1
+				  members:
+				    - alice
+				    - bob
+				- name: team2
+				  members:
+				    - charlie
+				    - dave
+				- name: team3
+				  members:
+				    - eve
+				    - frank
+			`),
+			right: heredoc.Doc(`
+				- name: team3
+				  members:
+				    - eve
+				    - frank
+				- name: team1
+				  members:
+				    - alice
+				    - bob
+				- name: team2
+				  members:
+				    - charlie
+				    - dave
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "sequences of maps containing sequences with inner modification",
+			left: heredoc.Doc(`
+				- name: team1
+				  members:
+				    - alice
+				    - bob
+				- name: team2
+				  members:
+				    - charlie
+				    - dave
+			`),
+			right: heredoc.Doc(`
+				- name: team2
+				  members:
+				    - charlie
+				    - dave
+				- name: team1
+				  members:
+				    - alice
+				    - carol
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Modified: 1},
 		},
 		{
 			name:          "empty sequences",
@@ -3190,6 +3498,163 @@ func Test_ignoreIndexes(t *testing.T) {
 			expectedDiffs: 1, // One 'foo' should be matched, one should be deleted
 			expectedTypes: map[DiffType]int{Deleted: 1},
 		},
+		{
+			name: "complex objects with removed element",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+				- name: charlie
+				  age: 35
+			`),
+			right: heredoc.Doc(`
+				- name: charlie
+				  age: 35
+				- name: alice
+				  age: 30
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Deleted: 1},
+		},
+		{
+			name: "complex objects with modified property",
+			left: heredoc.Doc(`
+				- name: alice
+				  role: admin
+				- name: bob
+				  role: user
+			`),
+			right: heredoc.Doc(`
+				- name: bob
+				  role: moderator
+				- name: alice
+				  role: admin
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Modified: 1},
+		},
+		{
+			name: "complex objects added removed and reordered",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+				- name: charlie
+				  age: 35
+			`),
+			right: heredoc.Doc(`
+				- name: charlie
+				  age: 35
+				- name: alice
+				  age: 30
+				- name: dave
+				  age: 40
+			`),
+			expectedDiffs: 2,
+			expectedTypes: map[DiffType]int{Modified: 2},
+		},
+		{
+			name: "duplicate complex objects",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+				- name: alice
+				  age: 30
+			`),
+			right: heredoc.Doc(`
+				- name: bob
+				  age: 25
+				- name: alice
+				  age: 30
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Deleted: 1},
+		},
+		{
+			name: "single element sequences same",
+			left: heredoc.Doc(`
+				- foo
+			`),
+			right: heredoc.Doc(`
+				- foo
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "single element sequences different",
+			left: heredoc.Doc(`
+				- foo
+			`),
+			right: heredoc.Doc(`
+				- bar
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Modified: 1},
+		},
+		{
+			name: "deeply nested maps in sequences",
+			left: heredoc.Doc(`
+				- config:
+				    db:
+				      host: localhost
+				      port: 5432
+				- config:
+				    db:
+				      host: remote
+				      port: 3306
+			`),
+			right: heredoc.Doc(`
+				- config:
+				    db:
+				      host: remote
+				      port: 3306
+				- config:
+				    db:
+				      host: localhost
+				      port: 5432
+			`),
+			expectedDiffs: 0,
+		},
+		{
+			name: "complex objects all replaced",
+			left: heredoc.Doc(`
+				- name: alice
+				  age: 30
+				- name: bob
+				  age: 25
+			`),
+			right: heredoc.Doc(`
+				- name: charlie
+				  age: 35
+				- name: dave
+				  age: 40
+			`),
+			expectedDiffs: 4,
+			expectedTypes: map[DiffType]int{Modified: 4},
+		},
+		{
+			name: "complex objects with appended element",
+			left: heredoc.Doc(`
+				- name: one
+				  value: ONE
+				- name: two
+				  value: TWO
+			`),
+			right: heredoc.Doc(`
+				- name: two
+				  value: TWO
+				- name: one
+				  value: ONE
+				- name: three
+				  value: THREE
+			`),
+			expectedDiffs: 1,
+			expectedTypes: map[DiffType]int{Added: 1},
+		},
 	}
 
 	for _, tt := range tests {
@@ -3203,18 +3668,14 @@ func Test_ignoreIndexes(t *testing.T) {
 			leftSequenceNode := leftNode.(*ast.SequenceNode)
 			rightSequenceNode := rightNode.(*ast.SequenceNode)
 
-			// First get the raw diffs without ignoring order
-			options := &compareOptions{ignoreSeqOrder: false}
-			rawDiffs := compareSequenceNodes(leftSequenceNode, rightSequenceNode, options)
+			options := &compareOptions{ignoreSeqOrder: true}
+			diffs := compareSequenceNodes(leftSequenceNode, rightSequenceNode, options)
 
-			// Then apply ignoreIndexes to simulate the ignoreSeqOrder behavior
-			filteredDiffs := ignoreIndexes(rawDiffs, options)
-
-			require.Len(t, filteredDiffs, tt.expectedDiffs)
+			require.Len(t, diffs, tt.expectedDiffs)
 
 			if tt.expectedTypes != nil {
 				actualTypes := make(map[DiffType]int)
-				for _, diff := range filteredDiffs {
+				for _, diff := range diffs {
 					actualTypes[diff.Type()]++
 				}
 				require.Equal(t, tt.expectedTypes, actualTypes)
