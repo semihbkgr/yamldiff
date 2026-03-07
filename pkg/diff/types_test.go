@@ -524,7 +524,7 @@ func TestDocDiffs_Format(t *testing.T) {
 	}
 }
 
-func TestDiff_Range(t *testing.T) {
+func TestDiff_Position(t *testing.T) {
 	t.Run("scalar modified", func(t *testing.T) {
 		left := "name: hello"
 		right := "name: world"
@@ -533,9 +533,9 @@ func TestDiff_Range(t *testing.T) {
 		require.Len(t, diffs[0], 1)
 		d := diffs[0][0]
 		// "hello" starts at 0-based byte 6, length 5
-		require.Equal(t, Range{Start: 6, End: 11}, d.LeftRange())
+		require.Equal(t, Position{Start: 6, End: 11}, d.LeftPosition())
 		// "world" starts at 0-based byte 6, length 5
-		require.Equal(t, Range{Start: 6, End: 11}, d.RightRange())
+		require.Equal(t, Position{Start: 6, End: 11}, d.RightPosition())
 	})
 
 	t.Run("added key", func(t *testing.T) {
@@ -545,9 +545,9 @@ func TestDiff_Range(t *testing.T) {
 		rightMapping := rightAst.Docs[0].Body.(*ast.MappingNode)
 		// Use MappingValueNode for "age: 30" to cover full key-value range
 		d := newDiff(nil, rightMapping.Values[1])
-		require.Equal(t, Range{}, d.LeftRange())
+		require.Equal(t, Position{}, d.LeftPosition())
 		// "age" starts at byte 12, "30" ends at byte 19
-		require.Equal(t, Range{Start: 12, End: 19}, d.RightRange())
+		require.Equal(t, Position{Start: 12, End: 19}, d.RightPosition())
 	})
 
 	t.Run("deleted key", func(t *testing.T) {
@@ -557,8 +557,8 @@ func TestDiff_Range(t *testing.T) {
 		leftMapping := leftAst.Docs[0].Body.(*ast.MappingNode)
 		d := newDiff(leftMapping.Values[1], nil)
 		// "age" starts at byte 12, "30" ends at byte 19
-		require.Equal(t, Range{Start: 12, End: 19}, d.LeftRange())
-		require.Equal(t, Range{}, d.RightRange())
+		require.Equal(t, Position{Start: 12, End: 19}, d.LeftPosition())
+		require.Equal(t, Position{}, d.RightPosition())
 	})
 
 	t.Run("flow sequence element", func(t *testing.T) {
@@ -569,9 +569,9 @@ func TestDiff_Range(t *testing.T) {
 		require.Len(t, diffs[0], 1)
 		d := diffs[0][0]
 		// "c" at byte 7, length 1
-		require.Equal(t, Range{Start: 7, End: 8}, d.LeftRange())
+		require.Equal(t, Position{Start: 7, End: 8}, d.LeftPosition())
 		// "d" at byte 7, length 1
-		require.Equal(t, Range{Start: 7, End: 8}, d.RightRange())
+		require.Equal(t, Position{Start: 7, End: 8}, d.RightPosition())
 	})
 
 	t.Run("block mapping deleted key", func(t *testing.T) {
@@ -582,14 +582,77 @@ func TestDiff_Range(t *testing.T) {
 		// MappingValueNode for "key2: val2"
 		d := newDiff(leftMapping.Values[1], nil)
 		// "key2" starts at byte 11, "val2" ends at byte 21
-		require.Equal(t, Range{Start: 11, End: 21}, d.LeftRange())
-		require.Equal(t, Range{}, d.RightRange())
+		require.Equal(t, Position{Start: 11, End: 21}, d.LeftPosition())
+		require.Equal(t, Position{}, d.RightPosition())
+	})
+
+	t.Run("double quoted string", func(t *testing.T) {
+		left := `version: "v1"`
+		right := `version: "v2"`
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		// "v1" token starts at opening quote (byte 9), ends after closing quote (byte 13)
+		require.Equal(t, Position{Start: 9, End: 13}, d.LeftPosition())
+		require.Equal(t, Position{Start: 9, End: 13}, d.RightPosition())
+	})
+
+	t.Run("single quoted string", func(t *testing.T) {
+		left := "version: 'v1'"
+		right := "version: 'v2'"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		// 'v1' token starts at opening quote (byte 9), ends after closing quote (byte 13)
+		require.Equal(t, Position{Start: 9, End: 13}, d.LeftPosition())
+		require.Equal(t, Position{Start: 9, End: 13}, d.RightPosition())
 	})
 
 	t.Run("nil nodes", func(t *testing.T) {
 		d := newDiff(nil, nil)
-		require.Equal(t, Range{}, d.LeftRange())
-		require.Equal(t, Range{}, d.RightRange())
+		require.Equal(t, Position{}, d.LeftPosition())
+		require.Equal(t, Position{}, d.RightPosition())
+	})
+
+	t.Run("added key via compare covers key-value pair", func(t *testing.T) {
+		left := "name: hello"
+		right := "name: hello\nage: 30"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		require.Equal(t, Added, d.Type())
+		require.Equal(t, Position{}, d.LeftPosition())
+		// Should cover "age: 30" (bytes 12-19), not just "30" (bytes 17-19)
+		require.Equal(t, Position{Start: 12, End: 19}, d.RightPosition())
+	})
+
+	t.Run("deleted key via compare covers key-value pair", func(t *testing.T) {
+		left := "name: hello\nage: 30"
+		right := "name: hello"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		require.Equal(t, Deleted, d.Type())
+		// Should cover "age: 30" (bytes 12-19), not just "30" (bytes 17-19)
+		require.Equal(t, Position{Start: 12, End: 19}, d.LeftPosition())
+		require.Equal(t, Position{}, d.RightPosition())
+	})
+
+	t.Run("modified value range covers only value", func(t *testing.T) {
+		left := "name: hello\nage: 30"
+		right := "name: hello\nage: 25"
+		diffs, err := Compare([]byte(left), []byte(right))
+		require.NoError(t, err)
+		require.Len(t, diffs[0], 1)
+		d := diffs[0][0]
+		require.Equal(t, Modified, d.Type())
+		// Modified should only cover the value "30"/"25", not the key
+		require.Equal(t, Position{Start: 17, End: 19}, d.LeftPosition())
+		require.Equal(t, Position{Start: 17, End: 19}, d.RightPosition())
 	})
 }
 

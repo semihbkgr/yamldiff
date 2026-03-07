@@ -3,6 +3,8 @@
 import { basicSetup, EditorView } from 'codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { Decoration } from '@codemirror/view';
+import { StateEffect, StateField, RangeSetBuilder } from '@codemirror/state';
 
 // DOM elements
 const outputEl = document.getElementById('output');
@@ -16,11 +18,53 @@ function debounceCompare() {
     debounceTimer = setTimeout(handleCompare, 300);
 }
 
+// Diff highlight decorations
+const setHighlights = StateEffect.define();
+
+const highlightField = StateField.define({
+    create() { return Decoration.none; },
+    update(decorations, tr) {
+        decorations = decorations.map(tr.changes);
+        for (const e of tr.effects) {
+            if (e.is(setHighlights)) decorations = e.value;
+        }
+        return decorations;
+    },
+    provide: f => EditorView.decorations.from(f),
+});
+
+const diffMarkClasses = {
+    added: 'cm-diff-added',
+    deleted: 'cm-diff-deleted',
+    modified: 'cm-diff-modified',
+};
+
+function buildDecorations(diffs, side, docLength) {
+    const ranges = [];
+    for (const docDiffs of diffs) {
+        for (const d of docDiffs) {
+            const source = d[side];
+            if (source && source.end <= docLength) {
+                ranges.push({ start: source.start, end: source.end, type: d.type });
+            }
+        }
+    }
+    ranges.sort((a, b) => a.start - b.start);
+
+    const builder = new RangeSetBuilder();
+    for (const r of ranges) {
+        const cls = diffMarkClasses[r.type];
+        if (cls) builder.add(r.start, r.end, Decoration.mark({ class: cls }));
+    }
+    return builder.finish();
+}
+
 // Shared CodeMirror extensions
 const editorExtensions = [
     basicSetup,
     yaml(),
     oneDark,
+    highlightField,
     EditorView.theme({
         '&': { backgroundColor: 'var(--bg-secondary)' },
         '.cm-gutters': { backgroundColor: 'var(--bg-secondary)', border: 'none' },
@@ -158,6 +202,21 @@ function formatDiffOutput(diffs) {
     return output;
 }
 
+// Apply diff highlights to editors
+function applyHighlights(diffs) {
+    leftEditor.dispatch({
+        effects: setHighlights.of(buildDecorations(diffs, 'leftSource', leftEditor.state.doc.length)),
+    });
+    rightEditor.dispatch({
+        effects: setHighlights.of(buildDecorations(diffs, 'rightSource', rightEditor.state.doc.length)),
+    });
+}
+
+function clearHighlights() {
+    leftEditor.dispatch({ effects: setHighlights.of(Decoration.none) });
+    rightEditor.dispatch({ effects: setHighlights.of(Decoration.none) });
+}
+
 // Compare handler
 function handleCompare() {
     const left = leftEditor.state.doc.toString();
@@ -165,7 +224,7 @@ function handleCompare() {
 
     if (!left || !right) {
         outputEl.innerHTML = '';
-
+        clearHighlights();
         return;
     }
 
@@ -178,11 +237,14 @@ function handleCompare() {
 
         if (result.error) {
             outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(result.error)}</span>`;
+            clearHighlights();
         } else {
             outputEl.innerHTML = formatDiffOutput(result.diffs);
+            applyHighlights(result.diffs);
         }
     } catch (err) {
         outputEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
+        clearHighlights();
     }
 }
 

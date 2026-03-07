@@ -1,6 +1,8 @@
 package diff
 
 import (
+	"strings"
+
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/token"
 )
@@ -28,9 +30,9 @@ func (dt DiffType) String() string {
 	}
 }
 
-// Range represents a byte offset range in source text.
+// Position represents a byte offset range in source text.
 // Zero value means no range (nil node).
-type Range struct {
+type Position struct {
 	Start int // 0-based byte offset, inclusive
 	End   int // 0-based byte offset, exclusive
 }
@@ -39,6 +41,13 @@ type Range struct {
 type Diff struct {
 	leftNode  ast.Node
 	rightNode ast.Node
+	// leftSourceNode and rightSourceNode represent the source-level nodes
+	// that this diff originates from. When set, LeftPosition/RightPosition use
+	// these for range calculation instead of leftNode/rightNode. This
+	// allows the highlighted region to be broader than the node used for
+	// formatting (e.g. the full key: value pair when a key is added or deleted).
+	leftSourceNode  ast.Node
+	rightSourceNode ast.Node
 }
 
 // newDiff creates a new Diff instance
@@ -80,16 +89,24 @@ func (d *Diff) RightNode() ast.Node {
 	return d.rightNode
 }
 
-// LeftRange returns the source text range of the left node.
-// Returns zero Range if the left node is nil.
-func (d *Diff) LeftRange() Range {
-	return nodeRange(d.leftNode)
+// LeftPosition returns the source text range of the left side.
+// Uses the source node if set, otherwise falls back to the diff node.
+// Returns zero Position if the left node is nil.
+func (d *Diff) LeftPosition() Position {
+	if d.leftSourceNode != nil {
+		return nodePosition(d.leftSourceNode)
+	}
+	return nodePosition(d.leftNode)
 }
 
-// RightRange returns the source text range of the right node.
-// Returns zero Range if the right node is nil.
-func (d *Diff) RightRange() Range {
-	return nodeRange(d.rightNode)
+// RightPosition returns the source text range of the right side.
+// Uses the source node if set, otherwise falls back to the diff node.
+// Returns zero Position if the right node is nil.
+func (d *Diff) RightPosition() Position {
+	if d.rightSourceNode != nil {
+		return nodePosition(d.rightSourceNode)
+	}
+	return nodePosition(d.rightNode)
 }
 
 // Format formats the diff using the provided options
@@ -165,11 +182,11 @@ func (f FileDiffs) Format(opts ...FormatOption) string {
 	return formatter.formatFileDiffs(f)
 }
 
-func nodeRange(node ast.Node) Range {
+func nodePosition(node ast.Node) Position {
 	if node == nil {
-		return Range{}
+		return Position{}
 	}
-	return Range{
+	return Position{
 		Start: nodeStartOffset(node),
 		End:   nodeEndOffset(node),
 	}
@@ -232,5 +249,5 @@ func nodeEndOffset(node ast.Node) int {
 }
 
 func tokenEndOffset(tok *token.Token) int {
-	return tok.Position.Offset - 1 + len(tok.Value)
+	return tok.Position.Offset - 1 + len(strings.Trim(tok.Origin, " \t\n\r"))
 }
