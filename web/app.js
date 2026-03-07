@@ -39,13 +39,34 @@ const diffMarkClasses = {
     modified: 'cm-diff-modified',
 };
 
+// Convert UTF-8 byte offset to UTF-16 code-unit position
+function byteOffsetToCharPosition(text, byteOffset) {
+    let charPos = 0;
+    let bytePos = 0;
+    const encoder = new TextEncoder();
+    
+    for (const char of text) {
+        if (bytePos >= byteOffset) break;
+        bytePos += encoder.encode(char).length;
+        charPos += char.length; // Account for surrogate pairs in UTF-16
+    }
+    
+    return charPos;
+}
+
 function buildDecorations(diffs, side, docLength) {
     const ranges = [];
+    const docText = side === 'leftSource' ? leftEditor.state.doc.toString() : rightEditor.state.doc.toString();
+    
     for (const docDiffs of diffs) {
         for (const d of docDiffs) {
             const source = d[side];
-            if (source && source.end <= docLength) {
-                ranges.push({ start: source.start, end: source.end, type: d.type });
+            if (source) {
+                const start = byteOffsetToCharPosition(docText, source.start);
+                const end = byteOffsetToCharPosition(docText, source.end);
+                if (end <= docLength) {
+                    ranges.push({ start, end, type: d.type });
+                }
             }
         }
     }
@@ -187,7 +208,9 @@ async function initWasm() {
 // Scroll editor to a source position, centering it in the viewport
 function scrollToSource(editor, source) {
     if (!source) return;
-    const pos = Math.min(source.start, editor.state.doc.length);
+    const docText = editor.state.doc.toString();
+    const charPos = byteOffsetToCharPosition(docText, source.start);
+    const pos = Math.min(charPos, editor.state.doc.length);
     editor.dispatch({
         selection: { anchor: pos },
         effects: EditorView.scrollIntoView(pos, { y: 'center' }),
