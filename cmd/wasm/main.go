@@ -22,7 +22,8 @@ func main() {
 
 // compare compares two YAML strings and returns structured diff data
 // JavaScript signature: yamldiffCompare(left: string, right: string, options?: {ignoreOrder?: boolean, pathOnly?: boolean, metadata?: boolean})
-//   => {diffs?: Array<Array<{type: string, path: string, format: string, leftSource?: {start: number, end: number}, rightSource?: {start: number, end: number}}>>, hasDiff?: boolean, error?: string}
+//
+//	=> {diffs?: Array<Array<{type: string, path: string, format: string, leftSource?: {start: number, end: number}, rightSource?: {start: number, end: number}}>>, hasDiff?: boolean, error?: string}
 func compare(this js.Value, args []js.Value) any {
 	if len(args) < 2 {
 		return map[string]any{"error": "yamldiffCompare requires at least 2 arguments: left, right"}
@@ -72,9 +73,9 @@ func compare(this js.Value, args []js.Value) any {
 		diffArray := make([]any, len(docDiffs))
 		for j, d := range docDiffs {
 			diffObj := map[string]any{
-				"type":         strings.ToLower(d.Type().String()),
-				"path":         d.Path(),
-				"format":       d.Format(formatOpts...),
+				"type":        strings.ToLower(d.Type().String()),
+				"path":        d.Path(),
+				"format":      d.Format(formatOpts...),
 				"leftSource":  nil,
 				"rightSource": nil,
 			}
