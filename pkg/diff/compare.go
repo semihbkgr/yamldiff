@@ -160,7 +160,9 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 		rightValue, ok := rightKeyValueMap[k]
 		if !ok {
 			node := wrapMappingValueNode(leftValue.Value)
-			keyDiffsMap[k] = []*Diff{newDiff(node, nil)}
+			d := newDiff(node, nil)
+			d.leftSourceNode = leftValue
+			keyDiffsMap[k] = []*Diff{d}
 			continue
 		}
 		keyDiffsMap[k] = compareNodes(leftValue.Value, rightValue.Value, options)
@@ -171,7 +173,9 @@ func compareMappingNodes(leftNode, rightNode *ast.MappingNode, options *compareO
 			continue
 		}
 		node := wrapMappingValueNode(rightValue.Value)
-		keyDiffsMap[k] = []*Diff{newDiff(nil, node)}
+		d := newDiff(nil, node)
+		d.rightSourceNode = rightValue
+		keyDiffsMap[k] = []*Diff{d}
 	}
 
 	allDiffs := make([]*Diff, 0)
