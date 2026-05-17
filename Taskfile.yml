@@ -11,14 +11,9 @@ tasks:
       - go build -v --ldflags='{{.LDFLAGS}}' .
 
   test:
-    desc: Run tests
+    desc: Run tests (pass COVER=true for coverage)
     cmds:
-      - go test -count 1 ./...
-
-  test:coverage:
-    desc: Run tests with coverage
-    cmds:
-      - go test -cover -count 1 ./...
+      - go test -count 1 {{if eq .COVER "true"}}-cover{{end}} ./...
 
   fmt:
     desc: Format Go code
@@ -31,17 +26,13 @@ tasks:
       - golangci-lint run ./...
 
   wasm:build:
-    desc: Build the WASM binary
+    desc: Build the WASM binary and copy the JS runtime into web/
     cmds:
       - GOOS=js GOARCH=wasm go build -o web/yamldiff.wasm ./cmd/wasm
-
-  wasm:cp-exec:
-    desc: Copy wasm_exec.js from Go installation
-    cmds:
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
 
-  wasm:
-    desc: Build WASM and copy support files
-    deps:
-      - wasm:build
-      - wasm:cp-exec
+  wasm:serve:
+    desc: Serve the WASM website on http://localhost:8080
+    dir: web
+    cmds:
+      - python3 -m http.server 8080
